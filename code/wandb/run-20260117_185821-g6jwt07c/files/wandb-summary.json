@@ -1,0 +1,1 @@
+{"_step":0,"train/loss":1.6842541694641113,"_runtime":13,"_timestamp":1.7686727150848415e+09,"iteration":1,"train/loss_cer":1.2687439918518066,"train/loss_seg_dice":1.1658555269241333,"train/consistency_weight":0.0006737946999085467,"train/cur_threshold":0.5000028014183044,"train/loss_at_kd":7.825616921763867e-05,"train/loss_dc0":0.08841270953416824,"_wandb":{"runtime":13}}

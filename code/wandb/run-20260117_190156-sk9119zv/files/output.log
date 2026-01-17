@@ -1,0 +1,97 @@
+Loaded 123 patients for mbhseg24 fold 0 [train]
+31 iterations per epoch
+Dataset: mbhseg24, Fold: 0
+  0%|                                       | 0/30000 [00:00<?, ?it/s]
+iteration 1 : loss : 1.684186, loss_seg_dice: 1.165868, loss_at_kd: 0.000078, loss_dc0: 0.088415, loss_cer: 1.268490, consistency_weight: 0.000674, cur_threshold: 0.500003
+iteration 2 : loss : 1.622353, loss_seg_dice: 1.147254, loss_at_kd: 0.000077, loss_dc0: 0.060160, loss_cer: 1.191755, consistency_weight: 0.000674, cur_threshold: 0.500008
+iteration 3 : loss : 1.535017, loss_seg_dice: 1.121696, loss_at_kd: 0.000067, loss_dc0: 0.035339, loss_cer: 1.073650, consistency_weight: 0.000674, cur_threshold: 0.500019
+iteration 4 : loss : 1.440598, loss_seg_dice: 1.085535, loss_at_kd: 0.000059, loss_dc0: 0.017897, loss_cer: 0.947486, consistency_weight: 0.000674, cur_threshold: 0.500041
+iteration 5 : loss : 1.372971, loss_seg_dice: 1.061030, loss_at_kd: 0.000057, loss_dc0: 0.010035, loss_cer: 0.826922, consistency_weight: 0.000674, cur_threshold: 0.500076
+iteration 6 : loss : 1.243661, loss_seg_dice: 0.984949, loss_at_kd: 0.000053, loss_dc0: 0.005889, loss_cer: 0.671928, consistency_weight: 0.000674, cur_threshold: 0.500128
+iteration 7 : loss : 1.262771, loss_seg_dice: 1.025001, loss_at_kd: 0.000061, loss_dc0: 0.001557, loss_cer: 0.587462, consistency_weight: 0.000674, cur_threshold: 0.500196
+iteration 8 : loss : 1.185528, loss_seg_dice: 1.012796, loss_at_kd: 0.000049, loss_dc0: 0.000597, loss_cer: 0.409655, consistency_weight: 0.000674, cur_threshold: 0.500293
+iteration 9 : loss : 1.151143, loss_seg_dice: 1.006591, loss_at_kd: 0.000052, loss_dc0: 0.000226, loss_cer: 0.308093, consistency_weight: 0.000674, cur_threshold: 0.500414
+iteration 10 : loss : 1.130883, loss_seg_dice: 1.011508, loss_at_kd: 0.000048, loss_dc0: 0.000091, loss_cer: 0.239190, consistency_weight: 0.000674, cur_threshold: 0.500556
+iteration 11 : loss : 1.074929, loss_seg_dice: 1.003984, loss_at_kd: 0.000047, loss_dc0: 0.000054, loss_cer: 0.078707, consistency_weight: 0.000674, cur_threshold: 0.500721
+iteration 12 : loss : 1.068303, loss_seg_dice: 1.005934, loss_at_kd: 0.000046, loss_dc0: 0.000026, loss_cer: 0.055769, consistency_weight: 0.000674, cur_threshold: 0.500907
+iteration 13 : loss : 1.063852, loss_seg_dice: 1.002912, loss_at_kd: 0.000047, loss_dc0: 0.000014, loss_cer: 0.044905, consistency_weight: 0.000674, cur_threshold: 0.501111
+iteration 14 : loss : 1.042043, loss_seg_dice: 0.990899, loss_at_kd: 0.000042, loss_dc0: 0.000009, loss_cer: 0.029300, consistency_weight: 0.000674, cur_threshold: 0.501335
+iteration 15 : loss : 1.057329, loss_seg_dice: 1.004038, loss_at_kd: 0.000045, loss_dc0: 0.000010, loss_cer: 0.026732, consistency_weight: 0.000674, cur_threshold: 0.501577
+iteration 16 : loss : 1.032328, loss_seg_dice: 0.984084, loss_at_kd: 0.000042, loss_dc0: 0.000005, loss_cer: 0.021197, consistency_weight: 0.000674, cur_threshold: 0.501836
+iteration 17 : loss : 1.051355, loss_seg_dice: 1.001766, loss_at_kd: 0.000043, loss_dc0: 0.000011, loss_cer: 0.021946, consistency_weight: 0.000674, cur_threshold: 0.502111
+iteration 18 : loss : 1.051171, loss_seg_dice: 1.001546, loss_at_kd: 0.000043, loss_dc0: 0.000003, loss_cer: 0.021331, consistency_weight: 0.000674, cur_threshold: 0.502403
+iteration 19 : loss : 1.054103, loss_seg_dice: 1.004062, loss_at_kd: 0.000044, loss_dc0: 0.000004, loss_cer: 0.019447, consistency_weight: 0.000674, cur_threshold: 0.502712
+iteration 20 : loss : 0.993306, loss_seg_dice: 0.945926, loss_at_kd: 0.000042, loss_dc0: 0.000003, loss_cer: 0.016929, consistency_weight: 0.000674, cur_threshold: 0.503038
+iteration 21 : loss : 1.048671, loss_seg_dice: 1.001489, loss_at_kd: 0.000042, loss_dc0: 0.000006, loss_cer: 0.018143, consistency_weight: 0.000674, cur_threshold: 0.503379
+iteration 22 : loss : 1.048248, loss_seg_dice: 1.000607, loss_at_kd: 0.000042, loss_dc0: 0.000005, loss_cer: 0.017445, consistency_weight: 0.000674, cur_threshold: 0.503737
+iteration 23 : loss : 0.930959, loss_seg_dice: 0.886358, loss_at_kd: 0.000039, loss_dc0: 0.000026, loss_cer: 0.019378, consistency_weight: 0.000674, cur_threshold: 0.504109
+iteration 24 : loss : 1.048439, loss_seg_dice: 1.003302, loss_at_kd: 0.000041, loss_dc0: 0.000007, loss_cer: 0.014869, consistency_weight: 0.000674, cur_threshold: 0.504500
+iteration 25 : loss : 1.045793, loss_seg_dice: 1.003799, loss_at_kd: 0.000037, loss_dc0: 0.000016, loss_cer: 0.016542, consistency_weight: 0.000674, cur_threshold: 0.504905
+iteration 26 : loss : 1.045640, loss_seg_dice: 1.000760, loss_at_kd: 0.000040, loss_dc0: 0.000022, loss_cer: 0.016604, consistency_weight: 0.000674, cur_threshold: 0.505327
+iteration 27 : loss : 1.058207, loss_seg_dice: 1.007986, loss_at_kd: 0.000042, loss_dc0: 0.000063, loss_cer: 0.026982, consistency_weight: 0.000674, cur_threshold: 0.505755
+iteration 28 : loss : 0.973777, loss_seg_dice: 0.932042, loss_at_kd: 0.000037, loss_dc0: 0.000012, loss_cer: 0.017154, consistency_weight: 0.000674, cur_threshold: 0.506205
+iteration 29 : loss : 1.043393, loss_seg_dice: 1.001498, loss_at_kd: 0.000037, loss_dc0: 0.000018, loss_cer: 0.016018, consistency_weight: 0.000674, cur_threshold: 0.506673
+iteration 30 : loss : 1.049619, loss_seg_dice: 1.007081, loss_at_kd: 0.000037, loss_dc0: 0.000035, loss_cer: 0.018452, consistency_weight: 0.000674, cur_threshold: 0.507155
+iteration 31 : loss : 1.043869, loss_seg_dice: 1.001858, loss_at_kd: 0.000037, loss_dc0: 0.000018, loss_cer: 0.017811, consistency_weight: 0.000674, cur_threshold: 0.507653
+iteration 32 : loss : 0.983497, loss_seg_dice: 0.941617, loss_at_kd: 0.000035, loss_dc0: 0.000051, loss_cer: 0.021593, consistency_weight: 0.000674, cur_threshold: 0.508163
+iteration 33 : loss : 0.948983, loss_seg_dice: 0.909358, loss_at_kd: 0.000034, loss_dc0: 0.000018, loss_cer: 0.017298, consistency_weight: 0.000674, cur_threshold: 0.508692
+iteration 34 : loss : 1.064560, loss_seg_dice: 1.004950, loss_at_kd: 0.000036, loss_dc0: 0.001044, loss_cer: 0.077275, consistency_weight: 0.000674, cur_threshold: 0.509194
+iteration 35 : loss : 1.053520, loss_seg_dice: 1.004096, loss_at_kd: 0.000037, loss_dc0: 0.000304, loss_cer: 0.041770, consistency_weight: 0.000674, cur_threshold: 0.509738
+iteration 36 : loss : 1.055019, loss_seg_dice: 1.005648, loss_at_kd: 0.000037, loss_dc0: 0.000189, loss_cer: 0.040556, consistency_weight: 0.000674, cur_threshold: 0.510300
+iteration 37 : loss : 1.010519, loss_seg_dice: 0.965421, loss_at_kd: 0.000036, loss_dc0: 0.000086, loss_cer: 0.031037, consistency_weight: 0.000674, cur_threshold: 0.510886
+iteration 38 : loss : 1.045890, loss_seg_dice: 1.004060, loss_at_kd: 0.000035, loss_dc0: 0.000027, loss_cer: 0.022025, consistency_weight: 0.000674, cur_threshold: 0.511490
+iteration 39 : loss : 1.043498, loss_seg_dice: 1.003739, loss_at_kd: 0.000035, loss_dc0: 0.000012, loss_cer: 0.014829, consistency_weight: 0.000674, cur_threshold: 0.512115
+iteration 40 : loss : 1.053328, loss_seg_dice: 1.004552, loss_at_kd: 0.000041, loss_dc0: 0.000015, loss_cer: 0.025224, consistency_weight: 0.000674, cur_threshold: 0.512746
+iteration 41 : loss : 1.038601, loss_seg_dice: 1.000475, loss_at_kd: 0.000035, loss_dc0: 0.000001, loss_cer: 0.010835, consistency_weight: 0.000674, cur_threshold: 0.513402
+iteration 42 : loss : 0.984966, loss_seg_dice: 0.947043, loss_at_kd: 0.000035, loss_dc0: 0.000001, loss_cer: 0.009737, consistency_weight: 0.000674, cur_threshold: 0.514076
+iteration 43 : loss : 1.047004, loss_seg_dice: 1.008404, loss_at_kd: 0.000035, loss_dc0: 0.000013, loss_cer: 0.011519, consistency_weight: 0.000674, cur_threshold: 0.514763
+iteration 44 : loss : 1.039786, loss_seg_dice: 1.002136, loss_at_kd: 0.000034, loss_dc0: 0.000069, loss_cer: 0.012242, consistency_weight: 0.000674, cur_threshold: 0.515463
+iteration 45 : loss : 1.041007, loss_seg_dice: 1.002924, loss_at_kd: 0.000033, loss_dc0: 0.000185, loss_cer: 0.015019, consistency_weight: 0.000674, cur_threshold: 0.516174
+iteration 46 : loss : 0.972751, loss_seg_dice: 0.934968, loss_at_kd: 0.000034, loss_dc0: 0.000070, loss_cer: 0.013677, consistency_weight: 0.000674, cur_threshold: 0.516902
+iteration 47 : loss : 1.038513, loss_seg_dice: 1.000512, loss_at_kd: 0.000034, loss_dc0: 0.000116, loss_cer: 0.014433, consistency_weight: 0.000674, cur_threshold: 0.517644
+iteration 48 : loss : 1.040120, loss_seg_dice: 1.003351, loss_at_kd: 0.000032, loss_dc0: 0.000106, loss_cer: 0.015140, consistency_weight: 0.000674, cur_threshold: 0.518401
+iteration 49 : loss : 0.990349, loss_seg_dice: 0.947820, loss_at_kd: 0.000036, loss_dc0: 0.000018, loss_cer: 0.021742, consistency_weight: 0.000674, cur_threshold: 0.519166
+iteration 50 : loss : 1.045198, loss_seg_dice: 1.001608, loss_at_kd: 0.000036, loss_dc0: 0.000088, loss_cer: 0.026118, consistency_weight: 0.000674, cur_threshold: 0.519947
+iteration 51 : loss : 1.045640, loss_seg_dice: 1.006968, loss_at_kd: 0.000031, loss_dc0: 0.000095, loss_cer: 0.026174, consistency_weight: 0.000674, cur_threshold: 0.520742
+iteration 52 : loss : 1.048684, loss_seg_dice: 1.004351, loss_at_kd: 0.000034, loss_dc0: 0.000179, loss_cer: 0.032829, consistency_weight: 0.000674, cur_threshold: 0.521546
+iteration 53 : loss : 1.042632, loss_seg_dice: 1.002329, loss_at_kd: 0.000032, loss_dc0: 0.000164, loss_cer: 0.028580, consistency_weight: 0.000674, cur_threshold: 0.522366
+iteration 54 : loss : 1.045751, loss_seg_dice: 1.000891, loss_at_kd: 0.000038, loss_dc0: 0.000074, loss_cer: 0.023402, consistency_weight: 0.000674, cur_threshold: 0.523203
+iteration 55 : loss : 1.048655, loss_seg_dice: 1.007261, loss_at_kd: 0.000032, loss_dc0: 0.000163, loss_cer: 0.031874, consistency_weight: 0.000674, cur_threshold: 0.524044
+iteration 56 : loss : 0.826447, loss_seg_dice: 0.786696, loss_at_kd: 0.000031, loss_dc0: 0.000104, loss_cer: 0.028299, consistency_weight: 0.000674, cur_threshold: 0.524901
+iteration 57 : loss : 1.046561, loss_seg_dice: 1.007267, loss_at_kd: 0.000032, loss_dc0: 0.000155, loss_cer: 0.023105, consistency_weight: 0.000674, cur_threshold: 0.525780
+iteration 58 : loss : 1.019276, loss_seg_dice: 0.980328, loss_at_kd: 0.000032, loss_dc0: 0.000129, loss_cer: 0.021782, consistency_weight: 0.000674, cur_threshold: 0.526676
+iteration 59 : loss : 0.921160, loss_seg_dice: 0.882527, loss_at_kd: 0.000031, loss_dc0: 0.000051, loss_cer: 0.024727, consistency_weight: 0.000674, cur_threshold: 0.527582
+iteration 60 : loss : 1.042931, loss_seg_dice: 1.006688, loss_at_kd: 0.000032, loss_dc0: 0.000023, loss_cer: 0.014401, consistency_weight: 0.000674, cur_threshold: 0.528512
+iteration 61 : loss : 1.041020, loss_seg_dice: 1.003177, loss_at_kd: 0.000034, loss_dc0: 0.000005, loss_cer: 0.011349, consistency_weight: 0.000674, cur_threshold: 0.529458
+iteration 62 : loss : 1.042362, loss_seg_dice: 1.005861, loss_at_kd: 0.000034, loss_dc0: 0.000002, loss_cer: 0.010068, consistency_weight: 0.000674, cur_threshold: 0.530420
+iteration 63 : loss : 1.036010, loss_seg_dice: 1.002608, loss_at_kd: 0.000031, loss_dc0: 0.000001, loss_cer: 0.008344, consistency_weight: 0.000674, cur_threshold: 0.531395
+iteration 64 : loss : 1.033401, loss_seg_dice: 1.000888, loss_at_kd: 0.000030, loss_dc0: 0.000000, loss_cer: 0.007331, consistency_weight: 0.000674, cur_threshold: 0.532385
+iteration 65 : loss : 1.036468, loss_seg_dice: 1.000593, loss_at_kd: 0.000033, loss_dc0: 0.000000, loss_cer: 0.010737, consistency_weight: 0.000674, cur_threshold: 0.533382
+iteration 66 : loss : 1.037103, loss_seg_dice: 1.003912, loss_at_kd: 0.000031, loss_dc0: 0.000000, loss_cer: 0.007365, consistency_weight: 0.000674, cur_threshold: 0.534398
+iteration 67 : loss : 1.033686, loss_seg_dice: 1.001584, loss_at_kd: 0.000030, loss_dc0: 0.000000, loss_cer: 0.006525, consistency_weight: 0.000674, cur_threshold: 0.535429
+iteration 68 : loss : 1.041243, loss_seg_dice: 1.002903, loss_at_kd: 0.000034, loss_dc0: 0.000000, loss_cer: 0.013383, consistency_weight: 0.000674, cur_threshold: 0.536462
+iteration 69 : loss : 1.031978, loss_seg_dice: 0.996820, loss_at_kd: 0.000033, loss_dc0: 0.000000, loss_cer: 0.008232, consistency_weight: 0.000674, cur_threshold: 0.537516
+iteration 70 : loss : 1.037520, loss_seg_dice: 1.003289, loss_at_kd: 0.000032, loss_dc0: 0.000000, loss_cer: 0.009056, consistency_weight: 0.000674, cur_threshold: 0.538581
+iteration 71 : loss : 1.038839, loss_seg_dice: 1.004716, loss_at_kd: 0.000031, loss_dc0: 0.000000, loss_cer: 0.008939, consistency_weight: 0.000674, cur_threshold: 0.539660
+iteration 72 : loss : 1.037410, loss_seg_dice: 1.004197, loss_at_kd: 0.000031, loss_dc0: 0.000000, loss_cer: 0.008551, consistency_weight: 0.000674, cur_threshold: 0.540752
+iteration 73 : loss : 1.035694, loss_seg_dice: 1.001231, loss_at_kd: 0.000032, loss_dc0: 0.000000, loss_cer: 0.008934, consistency_weight: 0.000674, cur_threshold: 0.541857
+iteration 74 : loss : 1.037156, loss_seg_dice: 1.005615, loss_at_kd: 0.000029, loss_dc0: 0.000000, loss_cer: 0.007477, consistency_weight: 0.000674, cur_threshold: 0.542977
+iteration 75 : loss : 1.037664, loss_seg_dice: 1.006909, loss_at_kd: 0.000029, loss_dc0: 0.000000, loss_cer: 0.006402, consistency_weight: 0.000674, cur_threshold: 0.544111
+iteration 76 : loss : 1.001314, loss_seg_dice: 0.965942, loss_at_kd: 0.000032, loss_dc0: 0.000000, loss_cer: 0.011719, consistency_weight: 0.000674, cur_threshold: 0.545248
+iteration 77 : loss : 1.035770, loss_seg_dice: 1.004432, loss_at_kd: 0.000028, loss_dc0: 0.000001, loss_cer: 0.010163, consistency_weight: 0.000674, cur_threshold: 0.546402
+iteration 78 : loss : 1.035153, loss_seg_dice: 1.002596, loss_at_kd: 0.000030, loss_dc0: 0.000003, loss_cer: 0.008823, consistency_weight: 0.000674, cur_threshold: 0.547567
+iteration 79 : loss : 1.036831, loss_seg_dice: 1.006034, loss_at_kd: 0.000028, loss_dc0: 0.000006, loss_cer: 0.008703, consistency_weight: 0.000674, cur_threshold: 0.548742
+iteration 80 : loss : 1.037849, loss_seg_dice: 1.004499, loss_at_kd: 0.000030, loss_dc0: 0.000021, loss_cer: 0.011487, consistency_weight: 0.000674, cur_threshold: 0.549926
+iteration 81 : loss : 1.023380, loss_seg_dice: 0.990853, loss_at_kd: 0.000029, loss_dc0: 0.000026, loss_cer: 0.010576, consistency_weight: 0.000674, cur_threshold: 0.551119
+iteration 82 : loss : 0.902366, loss_seg_dice: 0.866871, loss_at_kd: 0.000031, loss_dc0: 0.000089, loss_cer: 0.015035, consistency_weight: 0.000674, cur_threshold: 0.552319
+  File "/media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py", line 438, in <module>
+    train(args, snapshot_path)
+  File "/media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py", line 291, in train
+    history['loss'].append(loss.item())
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py", line 438, in <module>
+    train(args, snapshot_path)
+  File "/media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py", line 291, in train
+    history['loss'].append(loss.item())
+KeyboardInterrupt

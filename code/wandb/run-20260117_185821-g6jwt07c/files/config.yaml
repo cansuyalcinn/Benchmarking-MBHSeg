@@ -1,0 +1,102 @@
+_wandb:
+    value:
+        cli_version: 0.23.1
+        e:
+            49lyrm58u20y0laouassj53nlobahyul:
+                args:
+                    - --fold
+                    - "0"
+                    - --batch_size
+                    - "4"
+                codePath: code/train_DCNet_MBHSeg.py
+                codePathLocal: train_DCNet_MBHSeg.py
+                cpu_count: 6
+                cpu_count_logical: 12
+                cudaVersion: "13.0"
+                disk:
+                    /:
+                        total: "244466741248"
+                        used: "180724969472"
+                email: cansuyalcin.00@gmail.com
+                executable: /media/cansu/DiskSpace/miniconda3/envs/3dunet/bin/python
+                git:
+                    commit: be54847b2711cdba80fc3ab91b809652f1a1d858
+                    remote: https://github.com/cansuyalcinn/Benchmarking-MBHSeg.git
+                gpu: NVIDIA GeForce GTX 1080 Ti
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Pascal
+                      cudaCores: 3584
+                      memoryTotal: "11811160064"
+                      name: NVIDIA GeForce GTX 1080 Ti
+                      uuid: GPU-887dd694-afe0-cce9-8997-d11534a53e7c
+                host: cansik
+                memory:
+                    total: "134732660736"
+                os: Linux-6.8.0-90-generic-x86_64-with-glibc2.35
+                program: /media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py
+                python: CPython 3.10.19
+                root: /media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code
+                startedAt: "2026-01-17T17:58:21.044986Z"
+                writerId: 49lyrm58u20y0laouassj53nlobahyul
+        m: []
+        python_version: 3.10.19
+        t:
+            "1":
+                - 1
+                - 41
+            "2":
+                - 1
+                - 41
+            "3":
+                - 13
+                - 16
+            "4": 3.10.19
+            "5": 0.23.1
+            "12": 0.23.1
+            "13": linux-x86_64
+base_lr:
+    value: 0.01
+batch_size:
+    value: 4
+beta:
+    value: 0.3
+consistency:
+    value: 0.1
+consistency_rampup:
+    value: 200
+data_root:
+    value: ../data
+dataset:
+    value: mbhseg24
+deterministic:
+    value: 1
+exp:
+    value: MBHSeg_DCNet3D_fold0
+fold:
+    value: 0
+gpu:
+    value: "0"
+lamda:
+    value: 1
+max_iterations:
+    value: 30000
+model:
+    value: mcnet_kd
+num_classes:
+    value: 2
+patch_size:
+    value:
+        - 96
+        - 96
+        - 96
+seed:
+    value: 1337
+temp:
+    value: 1
+temperature:
+    value: 0.1
+use_wandb:
+    value: 1
+wandb_project:
+    value: mbhseg-dcnet

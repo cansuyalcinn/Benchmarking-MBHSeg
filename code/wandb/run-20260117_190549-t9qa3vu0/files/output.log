@@ -1,0 +1,43 @@
+Loaded 123 patients for mbhseg24 fold 0 [train]
+31 iterations per epoch
+Dataset: mbhseg24, Fold: 0
+  0%|                                       | 0/30000 [00:00<?, ?it/s]Traceback (most recent call last):
+iteration 1 : loss : 1.684186, loss_seg_dice: 1.165868, loss_at_kd: 0.000078, loss_dc0: 0.088415, loss_cer: 1.268490, consistency_weight: 0.000674, cur_threshold: 0.500003
+iteration 2 : loss : 1.622353, loss_seg_dice: 1.147254, loss_at_kd: 0.000077, loss_dc0: 0.060160, loss_cer: 1.191755, consistency_weight: 0.000674, cur_threshold: 0.500008
+iteration 3 : loss : 1.535016, loss_seg_dice: 1.121696, loss_at_kd: 0.000067, loss_dc0: 0.035339, loss_cer: 1.073650, consistency_weight: 0.000674, cur_threshold: 0.500019
+iteration 4 : loss : 1.440598, loss_seg_dice: 1.085535, loss_at_kd: 0.000059, loss_dc0: 0.017898, loss_cer: 0.947485, consistency_weight: 0.000674, cur_threshold: 0.500041
+iteration 5 : loss : 1.372972, loss_seg_dice: 1.061030, loss_at_kd: 0.000057, loss_dc0: 0.010036, loss_cer: 0.826923, consistency_weight: 0.000674, cur_threshold: 0.500076
+iteration 6 : loss : 1.243666, loss_seg_dice: 0.984954, loss_at_kd: 0.000053, loss_dc0: 0.005891, loss_cer: 0.671929, consistency_weight: 0.000674, cur_threshold: 0.500128
+iteration 7 : loss : 1.262773, loss_seg_dice: 1.025002, loss_at_kd: 0.000061, loss_dc0: 0.001557, loss_cer: 0.587467, consistency_weight: 0.000674, cur_threshold: 0.500196
+iteration 8 : loss : 1.185538, loss_seg_dice: 1.012797, loss_at_kd: 0.000049, loss_dc0: 0.000597, loss_cer: 0.409664, consistency_weight: 0.000674, cur_threshold: 0.500293
+iteration 9 : loss : 1.151154, loss_seg_dice: 1.006592, loss_at_kd: 0.000052, loss_dc0: 0.000226, loss_cer: 0.308109, consistency_weight: 0.000674, cur_threshold: 0.500414
+iteration 10 : loss : 1.130898, loss_seg_dice: 1.011509, loss_at_kd: 0.000048, loss_dc0: 0.000091, loss_cer: 0.239203, consistency_weight: 0.000674, cur_threshold: 0.500556
+Loaded 30 patients for mbhseg24 fold 0 [val]
+iteration 10 : val_dice_score : 0.866667
+Best model saved with dice 0.8667
+iteration 11 : loss : 1.074941, loss_seg_dice: 1.003984, loss_at_kd: 0.000047, loss_dc0: 0.000054, loss_cer: 0.078713, consistency_weight: 0.000674, cur_threshold: 0.500721
+iteration 12 : loss : 1.068325, loss_seg_dice: 1.005935, loss_at_kd: 0.000046, loss_dc0: 0.000026, loss_cer: 0.055784, consistency_weight: 0.000674, cur_threshold: 0.500907
+iteration 13 : loss : 1.063852, loss_seg_dice: 1.002912, loss_at_kd: 0.000047, loss_dc0: 0.000014, loss_cer: 0.044925, consistency_weight: 0.000674, cur_threshold: 0.501111
+iteration 14 : loss : 1.042037, loss_seg_dice: 0.990891, loss_at_kd: 0.000042, loss_dc0: 0.000009, loss_cer: 0.029313, consistency_weight: 0.000674, cur_threshold: 0.501335
+iteration 15 : loss : 1.057344, loss_seg_dice: 1.004038, loss_at_kd: 0.000045, loss_dc0: 0.000010, loss_cer: 0.026739, consistency_weight: 0.000674, cur_threshold: 0.501577
+iteration 16 : loss : 1.032317, loss_seg_dice: 0.984066, loss_at_kd: 0.000042, loss_dc0: 0.000005, loss_cer: 0.021203, consistency_weight: 0.000674, cur_threshold: 0.501836
+iteration 17 : loss : 1.051394, loss_seg_dice: 1.001766, loss_at_kd: 0.000043, loss_dc0: 0.000011, loss_cer: 0.021960, consistency_weight: 0.000674, cur_threshold: 0.502111
+iteration 18 : loss : 1.051216, loss_seg_dice: 1.001546, loss_at_kd: 0.000043, loss_dc0: 0.000003, loss_cer: 0.021337, consistency_weight: 0.000674, cur_threshold: 0.502403
+iteration 19 : loss : 1.054122, loss_seg_dice: 1.004061, loss_at_kd: 0.000044, loss_dc0: 0.000004, loss_cer: 0.019450, consistency_weight: 0.000674, cur_threshold: 0.502712
+iteration 20 : loss : 0.993473, loss_seg_dice: 0.946082, loss_at_kd: 0.000042, loss_dc0: 0.000003, loss_cer: 0.016937, consistency_weight: 0.000674, cur_threshold: 0.503038
+Loaded 30 patients for mbhseg24 fold 0 [val]
+  File "/media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py", line 525, in <module>
+    train(args, snapshot_path)
+  File "/media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py", line 438, in train
+    avg_dice = validate_with_sliding_window(
+  File "/media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py", line 126, in validate_with_sliding_window
+    y = y.cpu().data.numpy()
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py", line 525, in <module>
+    train(args, snapshot_path)
+  File "/media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py", line 438, in train
+    avg_dice = validate_with_sliding_window(
+  File "/media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py", line 126, in validate_with_sliding_window
+    y = y.cpu().data.numpy()
+KeyboardInterrupt

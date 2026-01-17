@@ -1,0 +1,23 @@
+2026-01-17 18:58:21,049 INFO    MainThread:134845 [wandb_setup.py:_flush():80] Current SDK version is 0.23.1
+2026-01-17 18:58:21,049 INFO    MainThread:134845 [wandb_setup.py:_flush():80] Configure stats pid to 134845
+2026-01-17 18:58:21,049 INFO    MainThread:134845 [wandb_setup.py:_flush():80] Loading settings from /home/cansu/.config/wandb/settings
+2026-01-17 18:58:21,049 INFO    MainThread:134845 [wandb_setup.py:_flush():80] Loading settings from /media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/wandb/settings
+2026-01-17 18:58:21,049 INFO    MainThread:134845 [wandb_setup.py:_flush():80] Loading settings from environment variables
+2026-01-17 18:58:21,050 INFO    MainThread:134845 [wandb_init.py:setup_run_log_directory():714] Logging user logs to /media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/wandb/run-20260117_185821-g6jwt07c/logs/debug.log
+2026-01-17 18:58:21,050 INFO    MainThread:134845 [wandb_init.py:setup_run_log_directory():715] Logging internal logs to /media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/wandb/run-20260117_185821-g6jwt07c/logs/debug-internal.log
+2026-01-17 18:58:21,050 INFO    MainThread:134845 [wandb_init.py:init():841] calling init triggers
+2026-01-17 18:58:21,050 INFO    MainThread:134845 [wandb_init.py:init():846] wandb.init called with sweep_config: {}
+config: {'data_root': '../data', 'dataset': 'mbhseg24', 'fold': 0, 'exp': 'MBHSeg_DCNet3D_fold0', 'model': 'mcnet_kd', 'max_iterations': 30000, 'batch_size': 4, 'deterministic': 1, 'base_lr': 0.01, 'patch_size': [96, 96, 96], 'seed': 1337, 'num_classes': 2, 'gpu': '0', 'consistency': 0.1, 'consistency_rampup': 200.0, 'temperature': 0.1, 'lamda': 1, 'beta': 0.3, 'temp': 1, 'use_wandb': 1, 'wandb_project': 'mbhseg-dcnet', '_wandb': {}}
+2026-01-17 18:58:21,050 INFO    MainThread:134845 [wandb_init.py:init():889] starting backend
+2026-01-17 18:58:22,570 INFO    MainThread:134845 [wandb_init.py:init():892] sending inform_init request
+2026-01-17 18:58:22,595 INFO    MainThread:134845 [wandb_init.py:init():900] backend started and connected
+2026-01-17 18:58:22,791 INFO    MainThread:134845 [wandb_init.py:init():970] updated telemetry
+2026-01-17 18:58:22,801 INFO    MainThread:134845 [wandb_init.py:init():994] communicating run to backend with 90.0 second timeout
+2026-01-17 18:58:23,493 INFO    MainThread:134845 [wandb_init.py:init():1041] starting run threads in backend
+2026-01-17 18:58:23,693 INFO    MainThread:134845 [wandb_run.py:_console_start():2521] atexit reg
+2026-01-17 18:58:23,693 INFO    MainThread:134845 [wandb_run.py:_redirect():2369] redirect: wrap_raw
+2026-01-17 18:58:23,693 INFO    MainThread:134845 [wandb_run.py:_redirect():2438] Wrapping output streams.
+2026-01-17 18:58:23,694 INFO    MainThread:134845 [wandb_run.py:_redirect():2461] Redirects installed.
+2026-01-17 18:58:23,743 INFO    MainThread:134845 [wandb_init.py:init():1081] run started, returning control to user process
+2026-01-17 18:58:36,852 INFO    wandb-AsyncioManager-main:134845 [service_client.py:_forward_responses():80] Reached EOF.
+2026-01-17 18:58:36,852 INFO    wandb-AsyncioManager-main:134845 [mailbox.py:close():137] Closing mailbox, abandoning 1 handles.

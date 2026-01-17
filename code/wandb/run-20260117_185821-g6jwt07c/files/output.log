@@ -1,0 +1,24 @@
+Loaded 123 patients for mbhseg24 fold 0 [train]
+31 iterations per epoch
+Dataset: mbhseg24, Fold: 0
+  0%|                                       | 0/30000 [00:00<?, ?it/s]Traceback (most recent call last):
+iteration 1 : loss : 1.684254, loss_seg_dice: 1.165856, loss_at_kd: 0.000078, loss_dc0: 0.088413, loss_cer: 1.268744, consistency_weight: 0.000674, cur_threshold: 0.500003
+  File "/media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py", line 437, in <module>
+    train(args, snapshot_path)
+  File "/media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py", line 282, in train
+    scaler.scale(loss).backward()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/torch/_tensor.py", line 492, in backward
+    torch.autograd.backward(
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/torch/autograd/__init__.py", line 251, in backward
+    Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+RuntimeError: cuDNN error: CUDNN_STATUS_EXECUTION_FAILED
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py", line 437, in <module>
+    train(args, snapshot_path)
+  File "/media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/train_DCNet_MBHSeg.py", line 282, in train
+    scaler.scale(loss).backward()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/torch/_tensor.py", line 492, in backward
+    torch.autograd.backward(
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/torch/autograd/__init__.py", line 251, in backward
+    Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+RuntimeError: cuDNN error: CUDNN_STATUS_EXECUTION_FAILED

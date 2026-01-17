@@ -1,0 +1,192 @@
+2026-01-17 19:05:49,357 INFO    MainThread:136301 [wandb_setup.py:_flush():80] Current SDK version is 0.23.1
+2026-01-17 19:05:49,357 INFO    MainThread:136301 [wandb_setup.py:_flush():80] Configure stats pid to 136301
+2026-01-17 19:05:49,357 INFO    MainThread:136301 [wandb_setup.py:_flush():80] Loading settings from /home/cansu/.config/wandb/settings
+2026-01-17 19:05:49,357 INFO    MainThread:136301 [wandb_setup.py:_flush():80] Loading settings from /media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/wandb/settings
+2026-01-17 19:05:49,357 INFO    MainThread:136301 [wandb_setup.py:_flush():80] Loading settings from environment variables
+2026-01-17 19:05:49,357 INFO    MainThread:136301 [wandb_init.py:setup_run_log_directory():714] Logging user logs to /media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/wandb/run-20260117_190549-t9qa3vu0/logs/debug.log
+2026-01-17 19:05:49,357 INFO    MainThread:136301 [wandb_init.py:setup_run_log_directory():715] Logging internal logs to /media/cansu/DiskSpace/Cansu/Benchmarking-MBHSeg/code/wandb/run-20260117_190549-t9qa3vu0/logs/debug-internal.log
+2026-01-17 19:05:49,357 INFO    MainThread:136301 [wandb_init.py:init():841] calling init triggers
+2026-01-17 19:05:49,358 INFO    MainThread:136301 [wandb_init.py:init():846] wandb.init called with sweep_config: {}
+config: {'data_root': '../data', 'dataset': 'mbhseg24', 'fold': 0, 'exp': 'MBHSeg_DCNet3D_fold0', 'model': 'mcnet_kd', 'max_iterations': 30000, 'batch_size': 4, 'deterministic': 1, 'base_lr': 0.01, 'patch_size': [96, 96, 96], 'seed': 1337, 'num_classes': 2, 'gpu': '0', 'consistency': 0.1, 'consistency_rampup': 200.0, 'temperature': 0.1, 'lamda': 1, 'beta': 0.3, 'temp': 1, 'use_wandb': 1, 'wandb_project': 'mbhseg-dcnet', '_wandb': {}}
+2026-01-17 19:05:49,358 INFO    MainThread:136301 [wandb_init.py:init():889] starting backend
+2026-01-17 19:05:49,668 INFO    MainThread:136301 [wandb_init.py:init():892] sending inform_init request
+2026-01-17 19:05:49,672 INFO    MainThread:136301 [wandb_init.py:init():900] backend started and connected
+2026-01-17 19:05:49,693 INFO    MainThread:136301 [wandb_init.py:init():970] updated telemetry
+2026-01-17 19:05:49,701 INFO    MainThread:136301 [wandb_init.py:init():994] communicating run to backend with 90.0 second timeout
+2026-01-17 19:05:50,224 INFO    MainThread:136301 [wandb_init.py:init():1041] starting run threads in backend
+2026-01-17 19:05:50,418 INFO    MainThread:136301 [wandb_run.py:_console_start():2521] atexit reg
+2026-01-17 19:05:50,418 INFO    MainThread:136301 [wandb_run.py:_redirect():2369] redirect: wrap_raw
+2026-01-17 19:05:50,418 INFO    MainThread:136301 [wandb_run.py:_redirect():2438] Wrapping output streams.
+2026-01-17 19:05:50,418 INFO    MainThread:136301 [wandb_run.py:_redirect():2461] Redirects installed.
+2026-01-17 19:05:50,424 INFO    MainThread:136301 [wandb_init.py:init():1081] run started, returning control to user process
+2026-01-17 19:11:36,440 INFO    wandb-AsyncioManager-main:136301 [service_client.py:_forward_responses():80] Reached EOF.
+2026-01-17 19:11:36,440 INFO    wandb-AsyncioManager-main:136301 [mailbox.py:close():137] Closing mailbox, abandoning 1 handles.
+2026-01-17 19:11:36,644 ERROR   wandb-AsyncioManager-main:136301 [asyncio_manager.py:fn_wrap_exceptions():183] Uncaught exception in run_soon callback.
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 181, in fn_wrap_exceptions
+    await fn()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 38, in publish
+    await self._send_server_request(request)
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 64, in _send_server_request
+    await self._writer.drain()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 371, in drain
+    await self._protocol._drain_helper()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 167, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-01-17 19:11:36,647 ERROR   wandb-AsyncioManager-main:136301 [asyncio_manager.py:fn_wrap_exceptions():183] Uncaught exception in run_soon callback.
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 181, in fn_wrap_exceptions
+    await fn()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 38, in publish
+    await self._send_server_request(request)
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 64, in _send_server_request
+    await self._writer.drain()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 371, in drain
+    await self._protocol._drain_helper()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 167, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-01-17 19:11:36,648 ERROR   wandb-AsyncioManager-main:136301 [asyncio_manager.py:fn_wrap_exceptions():183] Uncaught exception in run_soon callback.
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 181, in fn_wrap_exceptions
+    await fn()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 38, in publish
+    await self._send_server_request(request)
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 64, in _send_server_request
+    await self._writer.drain()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 371, in drain
+    await self._protocol._drain_helper()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 167, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-01-17 19:11:36,658 ERROR   wandb-AsyncioManager-main:136301 [asyncio_manager.py:fn_wrap_exceptions():183] Uncaught exception in run_soon callback.
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 181, in fn_wrap_exceptions
+    await fn()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 38, in publish
+    await self._send_server_request(request)
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 64, in _send_server_request
+    await self._writer.drain()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 371, in drain
+    await self._protocol._drain_helper()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 167, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-01-17 19:11:36,659 ERROR   wandb-AsyncioManager-main:136301 [asyncio_manager.py:fn_wrap_exceptions():183] Uncaught exception in run_soon callback.
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 181, in fn_wrap_exceptions
+    await fn()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 38, in publish
+    await self._send_server_request(request)
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 64, in _send_server_request
+    await self._writer.drain()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 371, in drain
+    await self._protocol._drain_helper()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 167, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-01-17 19:11:36,660 ERROR   wandb-AsyncioManager-main:136301 [asyncio_manager.py:fn_wrap_exceptions():183] Uncaught exception in run_soon callback.
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 181, in fn_wrap_exceptions
+    await fn()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 38, in publish
+    await self._send_server_request(request)
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 64, in _send_server_request
+    await self._writer.drain()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 371, in drain
+    await self._protocol._drain_helper()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 167, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-01-17 19:11:36,660 ERROR   wandb-AsyncioManager-main:136301 [asyncio_manager.py:fn_wrap_exceptions():183] Uncaught exception in run_soon callback.
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 181, in fn_wrap_exceptions
+    await fn()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 38, in publish
+    await self._send_server_request(request)
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 64, in _send_server_request
+    await self._writer.drain()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 371, in drain
+    await self._protocol._drain_helper()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 167, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-01-17 19:11:36,661 ERROR   wandb-AsyncioManager-main:136301 [asyncio_manager.py:fn_wrap_exceptions():183] Uncaught exception in run_soon callback.
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 181, in fn_wrap_exceptions
+    await fn()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 38, in publish
+    await self._send_server_request(request)
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 64, in _send_server_request
+    await self._writer.drain()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 371, in drain
+    await self._protocol._drain_helper()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 167, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-01-17 19:11:36,661 ERROR   wandb-AsyncioManager-main:136301 [asyncio_manager.py:fn_wrap_exceptions():183] Uncaught exception in run_soon callback.
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 181, in fn_wrap_exceptions
+    await fn()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 38, in publish
+    await self._send_server_request(request)
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 64, in _send_server_request
+    await self._writer.drain()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 371, in drain
+    await self._protocol._drain_helper()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 167, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-01-17 19:11:36,662 ERROR   wandb-AsyncioManager-main:136301 [asyncio_manager.py:fn_wrap_exceptions():183] Uncaught exception in run_soon callback.
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 181, in fn_wrap_exceptions
+    await fn()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 38, in publish
+    await self._send_server_request(request)
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 64, in _send_server_request
+    await self._writer.drain()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 371, in drain
+    await self._protocol._drain_helper()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 167, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-01-17 19:11:36,662 ERROR   wandb-AsyncioManager-main:136301 [asyncio_manager.py:fn_wrap_exceptions():183] Uncaught exception in run_soon callback.
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 181, in fn_wrap_exceptions
+    await fn()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 38, in publish
+    await self._send_server_request(request)
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 64, in _send_server_request
+    await self._writer.drain()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 371, in drain
+    await self._protocol._drain_helper()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 167, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-01-17 19:11:36,663 ERROR   wandb-AsyncioManager-main:136301 [asyncio_manager.py:fn_wrap_exceptions():183] Uncaught exception in run_soon callback.
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 181, in fn_wrap_exceptions
+    await fn()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 38, in publish
+    await self._send_server_request(request)
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 64, in _send_server_request
+    await self._writer.drain()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 371, in drain
+    await self._protocol._drain_helper()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 167, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-01-17 19:11:36,663 ERROR   wandb-AsyncioManager-main:136301 [asyncio_manager.py:fn_wrap_exceptions():183] Uncaught exception in run_soon callback.
+Traceback (most recent call last):
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 181, in fn_wrap_exceptions
+    await fn()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 38, in publish
+    await self._send_server_request(request)
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 64, in _send_server_request
+    await self._writer.drain()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 371, in drain
+    await self._protocol._drain_helper()
+  File "/media/cansu/DiskSpace/miniconda3/envs/3dunet/lib/python3.10/asyncio/streams.py", line 167, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
