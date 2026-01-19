@@ -15,18 +15,6 @@ def dice_loss(score, target):
     loss = 1 - loss
     return loss
 
-
-def dice_loss1(score, target):
-    target = target.float()
-    smooth = 1e-5
-    intersect = torch.sum(score * target)
-    y_sum = torch.sum(target)
-    z_sum = torch.sum(score)
-    loss = (2 * intersect + smooth) / (z_sum + y_sum + smooth)
-    loss = 1 - loss
-    return loss
-
-
 def entropy_loss(p, C=2):
     # p N*C*W*H*D
     y1 = -1*torch.sum(p*torch.log(p+1e-6), dim=1) / \
@@ -151,7 +139,7 @@ class FocalLoss(nn.Module):
             return loss.mean()
         else:
             return loss.sum()
-
+        
 
 class DiceLoss(nn.Module):
     def __init__(self, n_classes):
@@ -192,6 +180,97 @@ class DiceLoss(nn.Module):
             class_wise_dice.append(1.0 - dice.item())
             loss += dice * weight[i]
         return loss / self.n_classes
+
+
+class DiceLoss_Multiclass(nn.Module):
+    # dice loss for multi-class segmentation. only on the labels where the class is present. 
+    def __init__(self, n_classes, ignore_bg=True):
+        super().__init__()
+        self.n_classes = n_classes
+        self.ignore_bg = ignore_bg
+
+    def _one_hot_encoder(self, target):
+        return torch.stack(
+            [(target == i) for i in range(self.n_classes)],
+            dim=1
+        ).float()
+
+    def forward(self, inputs, target):
+        """
+        inputs: softmax probabilities [B, C, D, H, W]
+        target: labels [B, D, H, W]
+        """
+        smooth = 1e-5
+        target = self._one_hot_encoder(target)
+
+        dice_loss = 0.0
+        valid_classes = 0
+
+        for c in range(1 if self.ignore_bg else 0, self.n_classes):
+            target_c = target[:, c]
+            pred_c = inputs[:, c]
+
+            if torch.sum(target_c) == 0:
+                continue  # 🔥 skip absent class
+
+            intersect = torch.sum(pred_c * target_c)
+            union = torch.sum(pred_c) + torch.sum(target_c)
+
+            dice = (2 * intersect + smooth) / (union + smooth)
+            dice_loss += (1 - dice)
+            valid_classes += 1
+
+        if valid_classes == 0:
+            return torch.tensor(0.0, device=inputs.device)
+
+        return dice_loss / valid_classes
+
+
+
+def compute_per_class_dice_score(outputs, targets, num_classes=6, smooth=1e-5):
+    """
+    Compute per-class Dice score.
+    
+    Args:
+        outputs: Softmax probabilities [B, C, D, H, W] or argmax predictions [B, D, H, W]
+        targets: Ground truth labels [B, D, H, W]
+        num_classes: Number of classes
+        smooth: Smoothing factor
+    
+    Returns:
+        per_class_dice: List of dice scores for each class
+    """
+    if outputs.dim() == 4:
+        # argmax predictions, need to convert to one-hot
+        outputs_one_hot = torch.zeros(outputs.size(0), num_classes, outputs.size(1), 
+                                      outputs.size(2), outputs.size(3), device=outputs.device)
+        for i in range(num_classes):
+            outputs_one_hot[:, i] = (outputs == i).float()
+        outputs = outputs_one_hot
+    elif outputs.dim() == 5:
+        # Already probabilities/one-hot encoded
+        pass
+    else:
+        raise ValueError(f"Expected 4D or 5D tensor, got {outputs.dim()}D")
+    
+    # Convert targets to one-hot
+    targets_one_hot = torch.zeros_like(outputs)
+    for i in range(num_classes):
+        targets_one_hot[:, i] = (targets == i).float()
+    
+    per_class_dice = []
+    for class_id in range(num_classes):
+        pred = outputs[:, class_id]
+        target = targets_one_hot[:, class_id]
+        
+        intersection = torch.sum(pred * target)
+        pred_sum = torch.sum(pred * pred)
+        target_sum = torch.sum(target * target)
+        
+        dice = (2.0 * intersection + smooth) / (pred_sum + target_sum + smooth)
+        per_class_dice.append(dice.item())
+    
+    return per_class_dice
 
 
 def entropy_minmization(p):

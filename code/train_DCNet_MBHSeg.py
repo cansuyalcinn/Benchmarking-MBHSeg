@@ -16,6 +16,7 @@ sys.path.insert(0, code_dir)
 
 import numpy as np
 import torch
+import nibabel as nib
 import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -33,24 +34,21 @@ except ImportError:
     print("Warning: wandb not installed. Run: pip install wandb")
 
 from dataloders.mbhseg import MBHSegDataset, RandomRotFlip, ROICrop, ToTensor
-from utils import losses, ramps
+from utils import losses, ramps, metrics
 from networks.net_factory_3d import net_factory_3d
 from val_3D import test_all_case
 # Mixed precision disabled due to cuDNN issues
 # from torch.cuda.amp import autocast, GradScaler
 
-
 def get_current_consistency_weight(epoch):
     """Consistency ramp-up from https://arxiv.org/abs/1610.02242"""
     return args.consistency * ramps.sigmoid_rampup(epoch, args.consistency_rampup)
 
-
 def validate_with_sliding_window(model, data_root, dataset, fold, patch_size, model_name, 
-                                 stride_xy=48, stride_z=48, num_classes=2):
+                                 stride_xy=64, stride_z=64, num_classes=6):
     """Validation with sliding window inference similar to test_single_case."""
     import math
-    from medpy import metric
-    
+
     db_val = MBHSegDataset(
         data_root=data_root,
         dataset=dataset,
@@ -60,12 +58,16 @@ def validate_with_sliding_window(model, data_root, dataset, fold, patch_size, mo
         transform=None,
     )
     
-    all_dices = []
+    all_per_class_dices = [[] for _ in range(num_classes)]
+    sample_data = []  # Store a few samples for visualization
     
     for idx in range(len(db_val)):
         sample = db_val[idx]
         image = sample['image'].squeeze().cpu().numpy()  # [W, H, D]
         label = sample['label'].squeeze().cpu().numpy()  # [W, H, D]
+        
+        # Store original image for later
+        image_original = image.copy()
         
         w, h, d = image.shape
         
@@ -134,21 +136,33 @@ def validate_with_sliding_window(model, data_root, dataset, fold, patch_size, mo
         # Remove padding
         if add_pad:
             pred_map = pred_map[wl_pad:wl_pad+w, hl_pad:hl_pad+h, dl_pad:dl_pad+d]
+            score_map = score_map[:, wl_pad:wl_pad+w, hl_pad:hl_pad+h, dl_pad:dl_pad+d]
         
-        # Compute dice for class 1 (hemorrhage)
-        pred_binary = (pred_map == 1).astype(np.float32)
-        label_binary = (label == 1).astype(np.float32)
+        # Compute per-class dice scores
+        per_class_dice, _ = metrics.compute_per_class_dice_numpy(
+            score_map,
+            label, 
+            num_classes=num_classes
+        )
         
-        if pred_binary.sum() > 0 and label_binary.sum() > 0:
-            dice = metric.binary.dc(pred_binary, label_binary)
-        elif pred_binary.sum() == 0 and label_binary.sum() == 0:
-            dice = 1.0
-        else:
-            dice = 0.0
+        for class_id, dice in enumerate(per_class_dice):
+            all_per_class_dices[class_id].append(dice)
         
-        all_dices.append(dice)
+        # Store first few samples for visualization (use ORIGINAL unpadded image)
+        if len(sample_data) < 4:
+            sample_data.append({
+                'image': image_original,  # Use original unpadded image
+                'prediction': pred_map,
+                'target': label,
+                'dice': np.mean(per_class_dice)
+            })
     
-    return np.mean(all_dices)
+    # Compute mean dice per class
+    mean_per_class_dice = [np.mean(dices) if len(dices) > 0 else 0.0 for dices in all_per_class_dices]
+    overall_mean_dice = np.mean(mean_per_class_dice[1:]) # exclude background
+
+    
+    return mean_per_class_dice, overall_mean_dice, sample_data
 
 
 
@@ -174,7 +188,7 @@ parser.add_argument('--patch_size', type=list, default=[96, 96, 96],
                     help='patch size of network input')
 parser.add_argument('--seed', type=int, default=1337, help='random seed')
 
-parser.add_argument('--num_classes', type=int, default=2, help='output channel of network')
+parser.add_argument('--num_classes', type=int, default=6, help='output channel of network')
 parser.add_argument('--gpu', type=str, default='0', help='GPU to use')
 
 parser.add_argument('--consistency', type=float, default=0.1, help='consistency')
@@ -191,6 +205,7 @@ args = parser.parse_args()
 
 import torch.nn as nn
 
+#### HERE WE WILL ADD THE TWOSTEAMBATCHSAMPLER ### TODO
 
 class Attention(nn.Module):
     def __init__(self):
@@ -212,20 +227,27 @@ os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 
 class MetricsLogger:
-    """Log metrics to CSV file."""
-    def __init__(self, csv_path):
+    """Log metrics to CSV file with per-class support."""
+    def __init__(self, csv_path, num_classes=6):
         self.csv_path = csv_path
-        self.fieldnames = ['iter_num', 'dice_score']
+        self.num_classes = num_classes
+        class_names = ['Background', 'EDH', 'IPH', 'IVH', 'SAH', 'SDH']
+        self.fieldnames = ['iter_num', 'mean_dice'] + [f'dice_class_{i}_{class_names[i]}' for i in range(num_classes)]
         with open(self.csv_path, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=self.fieldnames)
             writer.writeheader()
 
-    def log_if_improved(self, iter_num, dice_score, prev_best):
-        """Log only if dice_score improves over previous best."""
-        if dice_score > prev_best:
+    def log_if_improved(self, iter_num, mean_dice, per_class_dice, prev_best):
+        """Log only if mean dice improves over previous best."""
+        if mean_dice > prev_best:
+            row_data = {'iter_num': iter_num, 'mean_dice': f'{mean_dice:.6f}'}
+            class_names = ['Background', 'EDH', 'IPH', 'IVH', 'SAH', 'SDH']
+            for i, dice in enumerate(per_class_dice):
+                row_data[f'dice_class_{i}_{class_names[i]}'] = f'{dice:.6f}'
+            
             with open(self.csv_path, 'a', newline='') as f:
                 writer = csv.DictWriter(f, fieldnames=self.fieldnames)
-                writer.writerow({'iter_num': iter_num, 'dice_score': f'{dice_score:.6f}'})
+                writer.writerow(row_data)
             return True
         return False
 
@@ -254,7 +276,7 @@ def train(args, snapshot_path):
     # Load MBHSeg24 dataset with ROICrop
     transform_train = transforms.Compose([
         RandomRotFlip(),
-        ROICrop(mask_key='label', margin=10, max_crop=args.patch_size, prob=0.8, 
+        ROICrop(mask_key='label', margin=10, max_crop=args.patch_size, prob=0.5, 
                 mode='constant', constant_values=0),
         ToTensor(),
     ])
@@ -281,10 +303,12 @@ def train(args, snapshot_path):
     
     # Optimizer and loss functions
     optimizer = optim.SGD(model.parameters(), lr=base_lr, momentum=0.9, weight_decay=0.0001)
-    ce_loss = CrossEntropyLoss()
+    class_weights = torch.tensor([0.0, 1.0, 1.0, 1.0, 1.0, 1.0], device='cuda') # we ignore background
+    ce_loss = CrossEntropyLoss(weight=class_weights)
+
     mse_criterion = F.mse_loss
     criterion_att = Attention()
-    dice_loss = losses.DiceLoss(2)
+    dice_loss = losses.DiceLoss(num_classes)
     
     # Logging and checkpointing
     writer = SummaryWriter(snapshot_path + '/log')
@@ -372,8 +396,12 @@ def train(args, snapshot_path):
             loss_dc0 += mse_criterion(max_output1_value0.detach(), min_output2_value0)
             loss_dc0 += mse_criterion(max_output2_value0.detach(), min_output1_value0)
             
-            loss_seg_dice += dice_loss(output1_soft, label_batch.unsqueeze(1))
-            loss_seg_dice += dice_loss(output2_soft, label_batch.unsqueeze(1))
+            # loss_seg_dice += dice_loss(output1_soft, label_batch.unsqueeze(1))
+            # loss_seg_dice += dice_loss(output2_soft, label_batch.unsqueeze(1))
+
+            loss_seg_dice += dice_loss(output1_soft, label_batch)
+            loss_seg_dice += dice_loss(output2_soft, label_batch)
+
             
             if mean_max_values >= 0.95:
                 loss_cer += ce_loss(output1, pseudo_output2.long().detach())
@@ -413,7 +441,7 @@ def train(args, snapshot_path):
             
             # W&B logging
             if HAS_WANDB and args.use_wandb:
-                wandb.log({
+                wandb_log_dict = {
                     'train/loss': loss.item(),
                     'train/loss_seg_dice': loss_seg_dice.item(),
                     'train/loss_at_kd': loss_at_kd.item(),
@@ -422,7 +450,21 @@ def train(args, snapshot_path):
                     'train/consistency_weight': consistency_weight,
                     'train/cur_threshold': cur_threshold.item(),
                     'iteration': iter_num,
-                })
+                }
+                
+                # Log sample predictions every 100 iterations
+                if iter_num % 100 == 0:
+                    try:
+                        with torch.no_grad():
+                            pred_output = torch.softmax(output1, dim=1)
+                        metrics.log_training_batch_to_wandb(
+                            wandb, volume_batch, pred_output, label_batch,
+                            iteration=iter_num, num_classes=num_classes, max_samples=2
+                        )
+                    except Exception as e:
+                        logging.warning(f"Failed to log training samples: {e}")
+                
+                wandb.log(wandb_log_dict)
             
             logging.info(
                 'iteration %d : loss : %03f, loss_seg_dice: %03f, loss_at_kd: %03f, '
@@ -431,27 +473,91 @@ def train(args, snapshot_path):
                     consistency_weight, cur_threshold))
             
             # Validation every 200 iterations
-            if iter_num > 0 and iter_num % 10 == 0:
+            if iter_num > 0 and iter_num % 200 == 0:
                 model.eval()
                 
                 # Use test_all_case-like validation with sliding window
-                avg_dice = validate_with_sliding_window(
+                per_class_dice, avg_dice, val_samples = validate_with_sliding_window(
                     model, 
                     args.data_root, 
                     args.dataset, 
                     args.fold, 
                     args.patch_size,
-                    args.model
+                    args.model,
+                    num_classes=num_classes
                 )
                 
                 # Store validation history
                 history['val_iter_num'].append(iter_num)
                 history['val_dice'].append(avg_dice)
                 
+                # Print per-class metrics
+                metrics.print_per_class_metrics(per_class_dice, prefix="Validation")
+                
                 # TensorBoard and W&B logging
                 writer.add_scalar('val/dice_score', avg_dice, iter_num)
+                for class_id, dice in enumerate(per_class_dice):
+                    writer.add_scalar(f'val/dice_class_{class_id}_{metrics.CLASS_NAMES.get(class_id, f"Class_{class_id}")}', 
+                                    dice, iter_num)
+                
                 if HAS_WANDB and args.use_wandb:
-                    wandb.log({'val/dice_score': avg_dice, 'iteration': iter_num})
+                    wandb_log_dict = {'val/dice_score': avg_dice, 'iteration': iter_num}
+                    for class_id, dice in enumerate(per_class_dice):
+                        wandb_log_dict[f'val/dice_class_{class_id}_{metrics.CLASS_NAMES.get(class_id, f"Class_{class_id}")}'] = dice
+                    wandb.log(wandb_log_dict)
+                
+                # Save validation sample visualizations and NIfTI files
+                try:
+                    val_images_dir = os.path.join(snapshot_path, 'val_images')
+                    os.makedirs(val_images_dir, exist_ok=True)
+                    
+                    for sample_idx, sample in enumerate(val_samples):
+                        img = sample['image']  # [W, H, D]
+                        pred = sample['prediction']  # [W, H, D]
+                        target = sample['target']  # [W, H, D]
+                        
+                        # Save as NIfTI images
+                        if HAS_NIBABEL:
+                            # Save original image
+                            img_nifti = nib.Nifti1Image(img.astype(np.float32), np.eye(4))
+                            img_path = os.path.join(val_images_dir, f'sample_{sample_idx}_image.nii.gz')
+                            nib.save(img_nifti, img_path)
+                            
+                            # Save ground truth segmentation
+                            gt_nifti = nib.Nifti1Image(target.astype(np.uint8), np.eye(4))
+                            gt_path = os.path.join(val_images_dir, f'sample_{sample_idx}_gt.nii.gz')
+                            nib.save(gt_nifti, gt_path)
+                            
+                            # Save prediction
+                            pred_nifti = nib.Nifti1Image(pred.astype(np.uint8), np.eye(4))
+                            pred_path = os.path.join(val_images_dir, f'sample_{sample_idx}_pred.nii.gz')
+                            nib.save(pred_nifti, pred_path)
+                            
+                            logging.info(f"Saved validation sample {sample_idx} NIfTI files to {val_images_dir}")
+                        else:
+                            logging.warning("nibabel not installed, skipping NIfTI saving. Install with: pip install nibabel")
+                        
+                        # Also log PNG slice to W&B if enabled
+                        if HAS_WANDB and args.use_wandb:
+                            try:
+                                # Select middle slice for visualization
+                                mid_z = img.shape[2] // 2
+                                
+                                viz_array = metrics.create_segmentation_visualizations(
+                                    img[:, :, mid_z], pred[:, :, mid_z], target[:, :, mid_z],
+                                    slice_idx=mid_z, num_classes=num_classes
+                                )
+                                
+                                wandb.log({
+                                    f'val/sample_{sample_idx}': wandb.Image(
+                                        viz_array,
+                                        caption=f"Val Sample {sample_idx}, Iter {iter_num}, Dice: {sample['dice']:.4f}"
+                                    )
+                                })
+                            except Exception as e:
+                                logging.warning(f"Failed to log visualization for sample {sample_idx}: {e}")
+                except Exception as e:
+                    logging.warning(f"Failed to save validation samples: {e}")
                 
                 logging.info('iteration %d : val_dice_score : %f' % (iter_num, avg_dice))
                 
@@ -466,7 +572,7 @@ def train(args, snapshot_path):
                     logging.info(f"Best model saved with dice {avg_dice:.4f}")
                     
                     # Log to CSV
-                    csv_logger.log_if_improved(iter_num, avg_dice, best_performance)
+                    csv_logger.log_if_improved(iter_num, avg_dice, per_class_dice, best_performance)
                     if HAS_WANDB and args.use_wandb:
                         wandb.log({'best_dice': avg_dice})
                 

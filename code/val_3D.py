@@ -1,5 +1,5 @@
-
 import math
+import os
 from glob import glob
 
 import h5py
@@ -145,23 +145,86 @@ def cal_metric(gt, pred):
         return np.zeros(2)
 
 
-def test_all_case(net, base_dir, test_list="full_test.list", 
-                  num_classes=4, patch_size=(48, 160, 160), 
-                  stride_xy=32, stride_z=24, model_name=None):
+def test_all_case(net, data_root, dataset='mbhseg24', fold=0, test_list="test.txt", 
+                  num_classes=6, patch_size=(96, 96, 96), 
+                  stride_xy=64, stride_z=64, model_name=None):
+    """
+    Test model on all cases in test set using NIfTI files.
     
-    with open(base_dir + '/{}'.format(test_list), 'r') as f:
-        image_list = f.readlines()
-    image_list = [base_dir + "/data/{}.h5".format(
-        item.replace('\n', '').split(",")[0]) for item in image_list]
-    total_metric = np.zeros((num_classes-1, 2))
-    print("Validation begin")
-    for image_path in tqdm(image_list):
-        h5f = h5py.File(image_path, 'r')
-        image = h5f['image'][:]
-        label = h5f['label'][:]
+    Args:
+        net: model network
+        data_root: root data directory (e.g., '../data')
+        dataset: 'mbhseg24' or 'mbhseg25'
+        fold: fold index (0-4)
+        test_list: split file name (e.g., 'test.txt')
+        num_classes: number of output classes
+        patch_size: patch size for sliding window
+        stride_xy: stride in xy plane
+        stride_z: stride in z direction
+        model_name: model name for output selection
+    
+    Returns:
+        total_metric: averaged metrics per class (shape: [num_classes-1, 2] for dice and hd95)
+    """
+    
+    # Load patient IDs from split file
+    splits_dir = os.path.join(data_root, 'splits', dataset, f'fold_{fold}')
+    split_file = os.path.join(splits_dir, test_list)
+    
+    if not os.path.exists(split_file):
+        raise FileNotFoundError(f"Split file not found: {split_file}")
+    
+    with open(split_file, 'r') as f:
+        patient_ids = [line.strip() for line in f.readlines() if line.strip()]
+    
+    # Setup image and label directories based on dataset
+    if dataset == 'mbhseg24':
+        img_dir = os.path.join(data_root, 'MBHSeg24', 'images')
+        gt_dir = os.path.join(data_root, 'MBHSeg24', 'ground_truths')
+    elif dataset == 'mbhseg25':
+        mv_base = os.path.join(data_root, 'MBHSeg25', 'Majority_voting')
+        img_dir = os.path.join(mv_base, 'images')
+        gt_dir = os.path.join(mv_base, 'ground_truths')
+    else:
+        raise ValueError(f"Unknown dataset: {dataset}")
+    
+    # Compute metrics for foreground classes only (1 to num_classes-1)
+    total_metric = np.zeros((num_classes - 1, 2))
+    print(f"Validation begin - Testing {len(patient_ids)} cases from {dataset} fold {fold}")
+    
+    for pid in tqdm(patient_ids):
+        # Load NIfTI image
+        img_path = os.path.join(img_dir, f'{pid}.nii.gz')
+        gt_path = os.path.join(gt_dir, f'{pid}.nii.gz')
+        
+        if not os.path.exists(img_path):
+            print(f"Warning: Image file not found: {img_path}")
+            continue
+        if not os.path.exists(gt_path):
+            print(f"Warning: Ground truth file not found: {gt_path}")
+            continue
+        
+        # Load NIfTI files
+        img_nii = nib.load(img_path)
+        gt_nii = nib.load(gt_path)
+        image = img_nii.get_fdata().astype(np.float32)
+        label = gt_nii.get_fdata().astype(np.uint8)
+        
+        # Apply NCCT normalization and min-max scaling (matching dataset preprocessing)
+        image = np.clip(image, -100.0, 300.0)  # NCCT brain windowing
+        min_v, max_v = float(image.min()), float(image.max())
+        if max_v > min_v:
+            image = (image - min_v) / (max_v - min_v)
+        else:
+            image = np.zeros_like(image, dtype=np.float32)
+        
+        # Run inference with sliding window
         prediction = test_single_case(
             net, image, stride_xy, stride_z, patch_size, num_classes=num_classes, model_name=model_name)
+        
+        # Compute metrics for foreground classes (1 to num_classes-1)
         for i in range(1, num_classes):
             total_metric[i-1, :] += cal_metric(label == i, prediction == i)
+    
     print("Validation end")
-    return total_metric / len(image_list)
+    return total_metric / len(patient_ids)
