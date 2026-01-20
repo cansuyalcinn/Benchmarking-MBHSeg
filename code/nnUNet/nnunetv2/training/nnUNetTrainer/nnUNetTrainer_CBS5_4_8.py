@@ -42,17 +42,121 @@ import numpy as np
 from nnunetv2.inference.predict_from_raw_data import nnUNetPredictor
 from nnunetv2.configuration import ANISO_THRESHOLD, default_num_processes
 
-# IN THIS CODE WE ARE JUST GIVING 12 LABELD IMAGES SAME AS NNUNET DATALOADER.
+# 5-4_8: 
+# This model is nnunet + ML + FP (3 FP image + original prediction) 
+# kap=0.1, # of FP=3
+# in each decoder only using main segmentation task. 
+# FP is obtained on the features, before the last convolutional layer.
+# we have to change num_FP and kap values.
+# we also remove the contribution of the batch statistics from the FP module.
+
+class FeaturePerturbation(nn.Module):
+    def __init__(self, kap=0.1, eps=1e-6, use_gpu=True):
+        super(FeaturePerturbation, self).__init__()
+        # self.num_features = num_features
+        self.eps = eps
+        self.kap = kap
+        self.use_gpu = use_gpu
+
+    def forward(self, x):
+        # normalization
+        mu = x.mean(dim=[2, 3, 4], keepdim=True)  # [B,C,1,1,1]
+        var = x.var(dim=[2, 3, 4], keepdim=True)  # [B,C,1,1,1]
+
+        sig = (var + self.eps).sqrt()
+        mu, sig = mu.detach(), sig.detach()
+        x_normed = (x - mu) / sig
+
+        batch_mu = mu.mean(dim=[0], keepdim=True)  # [1,C,1,1,1]
+        batch_psi = (mu.var(dim=[0], keepdim=True) + self.eps).sqrt()  # [1,C,1,1,1]
+        batch_sig = sig.mean(dim=[0], keepdim=True)  # [1,C,1,1,1]
+
+        # batch_mu = average of the per-sample means across the batch → global mean of means
+        # batch_sig = average of per-sample stds → global mean of stds
+        # batch_psi = std of mu values across the batch → diversity of means
+        # batch_phi = std of sig values across the batch → diversity of stds
+
+        batch_phi = (sig.var(dim=[0], keepdim=True) + self.eps).sqrt()  # [1,C,1,1,1]
+
+        # epsilon is sampled from a uniform distribution in the range [-kap, kap].
+        epsilon = torch.empty(1).uniform_(-self.kap, self.kap)
+
+        # This epsilon is then used to add perturbation noise to the feature statistics
+        # gamma and beta control the scaling and shifting of the normalized features (x_normed), 
+        # so perturbing them directly affects the final perturbed feature map x_aug
+
+        epsilon_tensor = torch.tensor(epsilon, device=sig.device, dtype=sig.dtype)
+
+        #  Noise scaled by batch diversity
+        gamma =  sig + epsilon_tensor * batch_phi
+        beta = mu + epsilon_tensor * batch_psi
+
+        x_aug = gamma * x_normed + beta
+
+        return x_aug
+
+class CombinedSemiSupervisedDataloader:
+    def __init__(self, dataloader_labeled, dataloader_unlabeled):
+        self.dataloader_labeled = dataloader_labeled
+        self.dataloader_unlabeled = dataloader_unlabeled
+        
+        self.labeled_iter = iter(dataloader_labeled)
+        self.unlabeled_iter = iter(dataloader_unlabeled)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            batch_l = next(self.labeled_iter)
+        except StopIteration:
+            self.labeled_iter = iter(self.dataloader_labeled)
+            batch_l = next(self.labeled_iter)
+
+        try:
+            batch_u = next(self.unlabeled_iter)
+        except StopIteration:
+            self.unlabeled_iter = iter(self.dataloader_unlabeled)
+            batch_u = next(self.unlabeled_iter)
+
+        # print(f"Labeled batch size: {batch_l['data'].shape[0]}, Unlabeled batch size: {batch_u['data'].shape[0]}")
+        # 2 and 2 = in total 4 as batch size.
+
+        # Combine batches
+        combined = {
+            "data": torch.cat([batch_l["data"], batch_u["data"]], dim=0),
+            "target": torch.cat([batch_l["target"], batch_u["target"]], dim=0)
+        }
+        return combined
+
+
+
+def get_3d_border(mask_3d, iterations=1):
+    """
+    Compute the border of a 3D binary mask using erosion.
+    
+    Args:
+        mask_3d (ndarray): 3D binary ground truth mask.
+        iterations (int): Number of erosion iterations.
+        
+    Returns:
+        border (ndarray): 3D binary mask where only border voxels are 1.
+    """
+    eroded = binary_erosion(mask_3d, iterations=iterations)
+    border = mask_3d.astype(np.uint8) - eroded.astype(np.uint8)
+    return border
 
 
 class DualDecoderWrapper(nn.Module):
     # This class wraps two decoders around a single encoder.
-    def __init__(self, encoder, decoder, n_classes):
+    # This class also applies feature perturbation to the outputs of the decoders.
+
+    def __init__(self, encoder, decoder, n_classes, num_FP=3):
         super().__init__()
         self.encoder = encoder
-
         self.decoder1 = copy.deepcopy(decoder)
         self.decoder2 = copy.deepcopy(decoder)
+        self.num_FP = num_FP
 
         self.seg_head1 = nn.Conv3d(n_classes, n_classes, kernel_size=1)
         self.boundary_head1 = nn.Conv3d(n_classes, n_classes, kernel_size=1)
@@ -60,26 +164,48 @@ class DualDecoderWrapper(nn.Module):
         self.seg_head2 = nn.Conv3d(n_classes, n_classes, kernel_size=1)
         self.boundary_head2 = nn.Conv3d(n_classes, n_classes, kernel_size=1)
 
+        self.FP_module = FeaturePerturbation().cuda()
+
     def forward(self, x):
         skips = self.encoder(x)
         f1_outputs = self.decoder1(skips)
         f2_outputs = self.decoder2(skips)
-        f1 = f1_outputs[0] if isinstance(f1_outputs, list) else f1_outputs
-        f2 = f2_outputs[0] if isinstance(f2_outputs, list) else f2_outputs
+
+        features1 = f1_outputs[0] if isinstance(f1_outputs, list) else f1_outputs
+        features2 = f2_outputs[0] if isinstance(f2_outputs, list) else f2_outputs
+
+        logits_d1 = self.seg_head1(features1)
+        logits_d2 = self.seg_head2(features2)
+        logits_d1_boundary = self.boundary_head1(features1)
+        logits_d2_boundary = self.boundary_head2(features2)
+
+        # apply feature perturbation N times. 
+        # we apply perturbations in feature space before the last convultin. after FP we pass them to cnv layer.
+        # and then we get logits for each decoder.
+        logits_d1_fp = []
+        logits_d2_fp = []
+        for i in range(self.num_FP):
+            f1_fp = self.FP_module(features1)
+            f2_fp = self.FP_module(features2)
+            logits_d1_fp.append(self.seg_head1(f1_fp))  # perturb → seg head
+            logits_d2_fp.append(self.seg_head2(f2_fp))
 
         # Apply heads
         out = {
-            "seg1": self.seg_head1(f1),
-            "boundary1": self.boundary_head1(f1),
-            "seg2": self.seg_head2(f2),
-            "boundary2": self.boundary_head2(f2),
-            "features1": f1,
-            "features2": f2
+            "seg1": logits_d1,
+            "boundary1": logits_d1_boundary,
+            "seg2": logits_d2,
+            "boundary2": logits_d2_boundary,
+            "features1": features1,
+            "features2": features2, 
+            "features1_FP": logits_d1_fp,
+            "features2_FP": logits_d2_fp
         }
+
         return out
 
 
-class nnUNetTrainerCoBoundarySeg1_2(nnUNetTrainerNoDeepSupervision):
+class nnUNetTrainerCoBoundarySeg5_4_8(nnUNetTrainerNoDeepSupervision):
     """
     Trainer for semi-supervised learning with mutual learning on segmentation heads.
     """
@@ -90,15 +216,17 @@ class nnUNetTrainerCoBoundarySeg1_2(nnUNetTrainerNoDeepSupervision):
             fold: int,
             dataset_json: dict,
             device: torch.device = torch.device('cuda'),
-            percantage: float = 0.05,
+            percentage: float = 0.05,
+            seed_name: str = '4'
         ):
-        super().__init__(plans, configuration, fold, dataset_json, device)
-        self.grad_scaler = None
-        self.initial_lr = 1e-4
-        self.weight_decay = 1e-5
+        super().__init__(plans, configuration, fold, dataset_json, device, percentage, seed_name)
+        # NNunet base settings
+        self.initial_lr = 1e-2 # 0.01
+        self.weight_decay = 3e-5 # 0.00003
         self.unpack_dataset = True
         self.labeled_bs = 2 # there will be 2 labeled 2 unlabeled because the batch size is 2 meaning that 2 bs from labeled 2 bs from unalebeld= batch size  4
-        self.percentage_labeled_data = percantage # TODO: How to set this?
+        self.percentage_labeled_data = percentage
+        self.seed_name = seed_name
         self.consistency_criterion_ml = nn.CrossEntropyLoss(reduction='none')
         print(f"Percentage of labeled data: {self.percentage_labeled_data}")
         self.logger = nnUNetLoggerCBS()
@@ -178,6 +306,7 @@ class nnUNetTrainerCoBoundarySeg1_2(nnUNetTrainerNoDeepSupervision):
             self.batch_size = batch_size_per_GPU[my_rank]
             self.oversample_foreground_percent = oversample_percent
 
+
     def initialize(self):
         if not self.was_initialized:
             ## DDP batch size and oversampling can differ between workers and needs adaptation
@@ -216,13 +345,214 @@ class nnUNetTrainerCoBoundarySeg1_2(nnUNetTrainerNoDeepSupervision):
             raise RuntimeError("You have called self.initialize even though the trainer was already initialized. "
                                 "That should not happen.")
 
+    def do_split(self):
+        # Different from nnunets function: we return the 
+
+        if self.dataset_class is None:
+            self.dataset_class = infer_dataset_class(self.preprocessed_dataset_folder)
+
+        if self.fold == "all":
+            # if fold==all then we use all images for training and validation
+            case_identifiers = self.dataset_class.get_identifiers(self.preprocessed_dataset_folder)
+            tr_keys = case_identifiers
+            val_keys = tr_keys
+        else:
+            splits_file = join(self.preprocessed_dataset_folder_base, "splits_final.json")
+            dataset = self.dataset_class(self.preprocessed_dataset_folder,
+                                         identifiers=None,
+                                         folder_with_segs_from_previous_stage=self.folder_with_segs_from_previous_stage)
+            # if the split file does not exist we need to create it
+            if not isfile(splits_file):
+                self.print_to_log_file("Creating new 5-fold cross-validation split...")
+                all_keys_sorted = list(np.sort(list(dataset.identifiers)))
+                splits = generate_crossval_split(all_keys_sorted, seed=12345, n_splits=5)
+                save_json(splits, splits_file)
+
+            else:
+                self.print_to_log_file("Using splits from existing split file:", splits_file)
+                splits = load_json(splits_file)
+                self.print_to_log_file(f"The split file contains {len(splits)} splits.")
+
+            self.print_to_log_file("Desired fold for training: %d" % self.fold)
+            if self.fold < len(splits):
+                tr_keys = splits[self.fold]['train']
+                val_keys = splits[self.fold]['val']
+                self.print_to_log_file("This split has %d training and %d validation cases."
+                                       % (len(tr_keys), len(val_keys)))
+            else:
+                self.print_to_log_file("INFO: You requested fold %d for training but splits "
+                                       "contain only %d folds. I am now creating a "
+                                       "random (but seeded) 80:20 split!" % (self.fold, len(splits)))
+                # if we request a fold that is not in the split file, create a random 80:20 split
+                rnd = np.random.RandomState(seed=12345 + self.fold)
+                keys = np.sort(list(dataset.identifiers))
+                idx_tr = rnd.choice(len(keys), int(len(keys) * 0.8), replace=False)
+                idx_val = [i for i in range(len(keys)) if i not in idx_tr]
+                tr_keys = [keys[i] for i in idx_tr]
+                val_keys = [keys[i] for i in idx_val]
+                self.print_to_log_file("This random 80:20 split has %d training and %d validation cases."
+                                       % (len(tr_keys), len(val_keys)))
+            if any([i in val_keys for i in tr_keys]):
+                self.print_to_log_file('WARNING: Some validation cases are also in the training set. Please check the '
+                                       'splits.json or ignore if this is intentional.')
+
+        tr_keys.sort()
+        val_keys.sort() # brats19_255 etc.
+
+        # CANSU: We are assing the percentage of labeled data to the training set
+        num_labeled = int(self.percentage_labeled_data* len(tr_keys))
+
+        from nnunetv2.paths import nnUNet_preprocessed
+        parent_dir = os.path.dirname(nnUNet_preprocessed)
+
+        # CANSU: Update: we are using the X number of labeled data from the training set from the split file
+        split_folder_path =  join(parent_dir, 'all_splits_trainset')
+        split_file = join(split_folder_path, f'{num_labeled}_labeled_split_seed_{self.seed_name}.json')
+        unlabeled_split_file = join(split_folder_path, f'{num_labeled}_unlabeled_split_seed_{self.seed_name}.json')
+
+        print('Using labeled split file:', split_file, 'and unlabeled split file:', unlabeled_split_file)
+
+        import json
+        # read the split file
+        if isfile(split_file):
+            self.print_to_log_file(f"Using {num_labeled} labeled training cases from the split file: {split_file}")
+            with open(split_file, 'r') as f:
+                data = json.load(f)
+            tr_keys_limit = list(data.keys())
+
+        else: # throw an error if the split file does not exist
+            raise FileNotFoundError(f"Split file {split_file} does not exist. Please create it first.")
+
+        if isfile(unlabeled_split_file):
+            self.print_to_log_file(f"Using {num_labeled} unlabeled training cases from the split file: {unlabeled_split_file}")
+            with open(unlabeled_split_file, 'r') as f:
+                data_unlabeled = json.load(f)
+            tr_unlabeled_keys = list(data_unlabeled.keys())
+            
+        else: # throw an error if the split file does not exist
+            raise FileNotFoundError(f"Unlabeled split file {unlabeled_split_file} does not exist. Please create it first.")
+        
+
+        self.print_to_log_file(f"Using {num_labeled} labeled training cases out of {len(tr_keys)} total training cases.")
+        self.print_to_log_file(f"Number of total training samples: {len(tr_keys)}")
+        self.print_to_log_file(f"Number of labeled training samples: {len(tr_keys_limit)}")
+        self.print_to_log_file(f"Number of unlabeled training samples: {len(tr_unlabeled_keys)}")
+
+        # Just return the identifiers
+        return tr_keys_limit, tr_unlabeled_keys, val_keys
+    
+    
+    def get_tr_and_val_datasets(self):
+        tr_labeled_keys, tr_unlabeled_keys, val_keys = self.do_split()
+
+        dataset_tr_labeled = self.dataset_class(self.preprocessed_dataset_folder, tr_labeled_keys,
+                                                folder_with_segs_from_previous_stage=self.folder_with_segs_from_previous_stage)
+        dataset_tr_unlabeled = self.dataset_class(self.preprocessed_dataset_folder, tr_unlabeled_keys,
+                                                folder_with_segs_from_previous_stage=self.folder_with_segs_from_previous_stage)
+        dataset_val = self.dataset_class(self.preprocessed_dataset_folder, val_keys,
+                                        folder_with_segs_from_previous_stage=self.folder_with_segs_from_previous_stage)
+        return dataset_tr_labeled, dataset_tr_unlabeled, dataset_val
+
+
+    def get_dataloaders(self):
+        if self.dataset_class is None:
+            self.dataset_class = infer_dataset_class(self.preprocessed_dataset_folder)
+
+        patch_size = self.configuration_manager.patch_size
+
+        deep_supervision_scales = self._get_deep_supervision_scales()
+
+        (
+            rotation_for_DA,
+            do_dummy_2d_data_aug,
+            initial_patch_size,
+            mirror_axes,
+        ) = self.configure_rotation_dummyDA_mirroring_and_inital_patch_size()
+
+        # training pipeline
+        tr_transforms = self.get_training_transforms(
+            patch_size, rotation_for_DA, deep_supervision_scales, mirror_axes, do_dummy_2d_data_aug,
+            use_mask_for_norm=self.configuration_manager.use_mask_for_norm,
+            is_cascaded=self.is_cascaded, foreground_labels=self.label_manager.foreground_labels,
+            regions=self.label_manager.foreground_regions if self.label_manager.has_regions else None,
+            ignore_label=self.label_manager.ignore_label)
+
+        # validation pipeline
+        val_transforms = self.get_validation_transforms(deep_supervision_scales,
+                                                        is_cascaded=self.is_cascaded,
+                                                        foreground_labels=self.label_manager.foreground_labels,
+                                                        regions=self.label_manager.foreground_regions if
+                                                        self.label_manager.has_regions else None,
+                                                        ignore_label=self.label_manager.ignore_label)
+
+        dataset_tr_labeled_split, dataset_tr_unlabeled_split, dataset_val_split = self.get_tr_and_val_datasets()
+
+        # DATALOADERS
+        dl_tr_labeled = nnUNetDataLoader(dataset_tr_labeled_split, self.batch_size,
+                                 initial_patch_size,
+                                 self.configuration_manager.patch_size,
+                                 self.label_manager,
+                                 oversample_foreground_percent=self.oversample_foreground_percent,
+                                 sampling_probabilities=None, pad_sides=None, transforms=tr_transforms,
+                                 probabilistic_oversampling=self.probabilistic_oversampling)
+
+        dl_tr_unlabeled = nnUNetDataLoader(dataset_tr_unlabeled_split, self.batch_size,
+                                initial_patch_size,
+                                self.configuration_manager.patch_size,
+                                self.label_manager,
+                                oversample_foreground_percent=self.oversample_foreground_percent,
+                                sampling_probabilities=None, pad_sides=None, transforms=tr_transforms,
+                                probabilistic_oversampling=self.probabilistic_oversampling)
+                
+        dl_val = nnUNetDataLoader(dataset_val_split, self.batch_size,
+                                  self.configuration_manager.patch_size,
+                                  self.configuration_manager.patch_size,
+                                  self.label_manager,
+                                  oversample_foreground_percent=self.oversample_foreground_percent,
+                                  sampling_probabilities=None, pad_sides=None, transforms=val_transforms,
+                                  probabilistic_oversampling=self.probabilistic_oversampling)
+        
+        allowed_num_processes = get_allowed_n_proc_DA()
+        if allowed_num_processes == 0:
+            mt_gen_train_l = SingleThreadedAugmenter(dl_tr_labeled, None)
+            mt_gen_train_u = SingleThreadedAugmenter(dl_tr_unlabeled, None)
+            mt_gen_val = SingleThreadedAugmenter(dl_val, None)
+        else:
+            mt_gen_train_l = NonDetMultiThreadedAugmenter(data_loader=dl_tr_labeled, transform=None,
+                                                        num_processes=allowed_num_processes,
+                                                        num_cached=max(6, allowed_num_processes // 2), seeds=None,
+                                                        pin_memory=self.device.type == 'cuda', wait_time=0.002)
+            mt_gen_train_u = NonDetMultiThreadedAugmenter(data_loader=dl_tr_unlabeled, transform=None,
+                                                        num_processes=max(1, allowed_num_processes // 2),
+                                                        num_cached=max(3, allowed_num_processes // 4), seeds=None,
+                                                        pin_memory=self.device.type == 'cuda', wait_time=0.002)
+            mt_gen_val = NonDetMultiThreadedAugmenter(data_loader=dl_val,
+                                                      transform=None, num_processes=max(1, allowed_num_processes // 2),
+                                                      num_cached=max(3, allowed_num_processes // 4), seeds=None,
+                                                      pin_memory=self.device.type == 'cuda',
+                                                      wait_time=0.002)
+        # # let's get this party started
+        _ = next(mt_gen_train_l)
+        _ = next(mt_gen_train_u)
+        _ = next(mt_gen_val)
+
+        self.dataloader_train = CombinedSemiSupervisedDataloader(
+                                                        dataloader_labeled=mt_gen_train_l,
+                                                        dataloader_unlabeled=mt_gen_train_u
+                                                    )
+
+        self.dataloader_val = mt_gen_val
+
+        return self.dataloader_train, self.dataloader_val
+
+
     @staticmethod
     def build_network_architecture(plans_manager: PlansManager,
                                    dataset_json,
                                    configuration_manager: ConfigurationManager,
                                    num_input_channels,
                                    enable_deep_supervision: bool = False) -> nn.Module:
-        
+
         label_manager = plans_manager.get_label_manager(dataset_json)
 
         model = nnUNetTrainerNoDeepSupervision.build_network_architecture(configuration_manager.network_arch_class_name,
@@ -240,18 +570,133 @@ class nnUNetTrainerCoBoundarySeg1_2(nnUNetTrainerNoDeepSupervision):
         return network
     
     def configure_optimizers(self):
-        optimizer = Adam(self.network.parameters(), lr=self.initial_lr, weight_decay=self.weight_decay, eps=1e-5)
-        scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs, exponent=0.9)
-        return optimizer, scheduler
-    
-    # # # TESTING SGD OPTIMIZER CANSU
-    # # def configure_optimizers(self):
-    # #     optimizer = torch.optim.SGD(self.network.parameters(), self.initial_lr, weight_decay=self.weight_decay,
-    # #                                 momentum=0.99, nesterov=True)
-    # #     lr_scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs)
-    # #     return optimizer, lr_scheduler
+        optimizer = torch.optim.SGD(self.network.parameters(), self.initial_lr, weight_decay=self.weight_decay,
+                                    momentum=0.99, nesterov=True)
+        lr_scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs)
+        return optimizer, lr_scheduler
     
 
+    def calculate_ML(self, y_all, outfeats, outputs_seg, i, j, num_classes, consistency_criterion):
+        uncertainty_o1 = -1.0 * torch.sum(y_all[i] * torch.log(y_all[i] + 1e-6), dim=1) 
+        uncertainty_o2 = -1.0 * torch.sum(y_all[j] * torch.log(y_all[j] + 1e-6), dim=1) 
+
+        mask = (uncertainty_o1 > uncertainty_o2).float() # Keep Voxels Where Decoder j is More Confident
+        # 1 where decoder j is more confident → so j will be the teacher for those voxels.
+
+        batch_o, c_o, w_o, h_o, d_o = y_all[j].shape
+        batch_f, c_f, w_f, h_f, d_f = outfeats[j].shape 
+
+        teacher_o = y_all[j].reshape(batch_o, c_o, -1)
+        teacher_f = outfeats[j].reshape(batch_f, c_f, -1)
+        stu_f = outfeats[i].reshape(batch_f, c_f, -1)
+
+        # computer class wise prototype bank.
+        # The prototype_bank was created by averaging features from the teacher's feature maps grouped by predicted class.
+        index = torch.argmax(y_all[j], dim=1, keepdim=True)
+        prototype_bank = torch.zeros(batch_f, num_classes, c_f).cuda() 
+        for ba in range(batch_f):
+            for n_class in range(num_classes):
+                mask_temp = (index[ba] == n_class).float()
+                top_fea = outfeats[j][ba] * mask_temp
+                prototype_bank[ba, n_class] = top_fea.sum(-1).sum(-1).sum(-1) / (mask_temp.sum() + 1e-6)
+
+        prototype_bank = F.normalize(prototype_bank, dim=-1)
+        mask_t = torch.zeros_like(y_all[i]).cuda() 
+
+        #  Generate Similarity Mask (How Much Does Each Voxel Match Its Prototype)
+        # cosine similarity between The voxel's feature vector from the teacher's feature map
+        # The goal of this step is to evaluate how well each voxel's features in the teacher’s output correspond to the semantic prototypes extracted from the teacher’s features.
+        for ba in range(batch_o):
+            for n_class in range(num_classes):
+                class_prototype = prototype_bank[ba, n_class]
+                mask_t[ba, n_class] = F.cosine_similarity(teacher_f[ba],
+                                                    class_prototype.unsqueeze(1),
+                                                    dim=0).view(w_f, h_f, d_f)
+
+        weight_pixel_t = (1 - nn.MSELoss(reduction='none')(mask_t, y_all[j])).mean(1)
+        weight_pixel_t = weight_pixel_t * mask
+
+        loss_t = consistency_criterion(outputs_seg[i], torch.argmax(y_all[j], dim=1).detach()) 
+        return (loss_t * weight_pixel_t.detach()).sum() / (mask.sum() + 1e-6)
+    
+
+    def calculate_ML_FP(self, y_all, outfeats, outputs_seg, y_all_fp, i, j, num_classes, consistency_criterion):
+        # Calculates Mutual Learning with Feature Perturbation.
+
+        def entropy_map(prob):
+            return -torch.sum(prob * torch.log(prob + 1e-6), dim=1)  # shape: (B, D, H, W)
+
+        # === STEP 1: Get most confident predictions (min-entropy) for decoder i and j ===
+
+        # For decoder i
+        probs_i_all = [y_all[i]] + [y_all_fp[i][k] for k in range(len(y_all_fp[i]))]
+        entropies_i_stack = torch.stack([entropy_map(p) for p in probs_i_all])  # shape: (3, B, D, H, W)
+        min_entropy_i = torch.min(entropies_i_stack, dim=0)[0]  # (B, D, H, W)
+
+        # For decoder j
+        probs_j_all = [y_all[j]] + [y_all_fp[j][k] for k in range(len(y_all_fp[j]))]
+        entropies_j_stack = torch.stack([entropy_map(p) for p in probs_j_all])  # shape: (3, B, D, H, W)
+        min_entropy_indices_j = torch.argmin(entropies_j_stack, dim=0)  # (B, D, H, W) 
+        # min_entropy_indices_j: a tensor with shape (B, D, H, W) containing the index (0, 1, or 2) of the version (original or perturbed) that has the lowest entropy for each voxel.
+
+        # === STEP 2: Build y_all_confident_j (voxel-wise most confident prediction) ===
+        stacked_probs_j = torch.stack(probs_j_all, dim=0)  # shape: (3, B, C, D, H, W)
+        stacked_probs_j = stacked_probs_j.permute(1, 0, 2, 3, 4, 5)  # shape: (B, 3, C, D, H, W) Now, for each voxel, you have 3 predictions across dimension dim=1
+        gather_idx = min_entropy_indices_j.unsqueeze(1)  # (B, 1, D, H, W)
+        selected_probs_j = torch.gather(
+            stacked_probs_j,  #stacked_probs_j: shape = (B, 3, C, D, H, W)
+            dim=1,  # We want to gather along dim=1 (i.e., the 3 options)
+            # The index must match the shape of stacked_probs_j except in dim=1
+            index=gather_idx.unsqueeze(2).expand(-1, -1, num_classes, -1, -1, -1) # (B, 1, C, D, H, W)
+        )  # shape: (B, 1, C, D, H, W). For each voxel, gather from dim=1 using the selected version index.
+        # This tensor now contains, for each voxel, the softmax from the most confident version.
+
+        y_all_confident_j = selected_probs_j.squeeze(1)  # shape: (B, C, D, H, W)
+
+        # === STEP 3: Confidence-based mutual supervision mask ===
+        min_entropy_j = torch.gather(entropies_j_stack, dim=0, index=min_entropy_indices_j.unsqueeze(0)).squeeze(0)
+        mask = (min_entropy_i > min_entropy_j).float()  # decoder j is more confident → it teaches i
+
+        # === STEP 4: Build prototype bank from y_all_confident_j ===
+        batch_o, c_o, w_o, h_o, d_o = y_all[j].shape
+        batch_f, c_f, w_f, h_f, d_f = outfeats[j].shape
+        # Preserving original teacher features (outfeats[j]) to avoid extra compute, but it can be extended later.
+        teacher_f = outfeats[j].reshape(batch_f, c_f, -1)
+
+        index = torch.argmax(y_all_confident_j, dim=1, keepdim=True)  # use confident predictions
+
+        prototype_bank = torch.zeros(batch_f, num_classes, c_f).cuda()
+        for ba in range(batch_f):
+            for n_class in range(num_classes):
+                mask_temp = (index[ba] == n_class).float()
+                top_fea = outfeats[j][ba] * mask_temp  # outfeats[j] is original
+                prototype_bank[ba, n_class] = top_fea.sum(-1).sum(-1).sum(-1) / (mask_temp.sum() + 1e-6)
+
+        prototype_bank = F.normalize(prototype_bank, dim=-1)
+
+        # === STEP 5: Compute pixel-wise similarity to prototype bank ===
+        mask_t = torch.zeros_like(y_all[i]).cuda()
+        for ba in range(batch_o):
+            for n_class in range(num_classes):
+                class_prototype = prototype_bank[ba, n_class]
+                mask_t[ba, n_class] = F.cosine_similarity(
+                    teacher_f[ba],
+                    class_prototype.unsqueeze(1),
+                    dim=0
+                ).view(w_f, h_f, d_f)
+
+        weight_pixel_t = (1 - nn.MSELoss(reduction='none')(mask_t, y_all_confident_j)).mean(1)
+        weight_pixel_t = weight_pixel_t * mask
+
+        # === STEP 6: Consistency loss using confident pseudo-labels ===
+        loss_t = consistency_criterion(
+            outputs_seg[i],
+            torch.argmax(y_all_confident_j, dim=1).detach()
+        )
+
+        return (loss_t * weight_pixel_t.detach()).sum() / (mask.sum() + 1e-6)
+
+    
     def train_step(self, batch: dict) -> dict:
         data = batch['data']
         target = batch['target']
@@ -260,6 +705,7 @@ class nnUNetTrainerCoBoundarySeg1_2(nnUNetTrainerNoDeepSupervision):
         # 4,1,96,96,96 and # 4,1,96,96,96
 
         data = data.to(self.device, non_blocking=True)
+
         if isinstance(target, list):
             target = [i.to(self.device, non_blocking=True) for i in target]
         else:
@@ -275,19 +721,59 @@ class nnUNetTrainerCoBoundarySeg1_2(nnUNetTrainerNoDeepSupervision):
         boundary2 = output['boundary2']
         features1 = output['features1']
         features2 = output['features2']
+        features1_FP = output['features1_FP']
+        features2_FP = output['features2_FP']
 
         outfeats = [features1, features2]
         outputs_seg = [output_seg1, output_seg2]
         outputs_border = [boundary1, boundary2]
+        outputs_seg_FP = [features1_FP, features2_FP]
 
         num_outputs = len(outputs_seg) # 2 decoders. 
+        self.num_FP = 3
 
         # Full segmentation loss on the labeled data. 
         loss_seg = 0
         for idx in range(num_outputs):
             loss_seg += self.loss(outputs_seg[idx][:self.labeled_bs], target[:self.labeled_bs])
 
-        l = loss_seg 
+        # Mutual learning loss.
+        y_all = torch.zeros((num_outputs,) + outputs_seg[0].shape).to(self.device)
+        for idx in range(num_outputs):
+            y = outputs_seg[idx]
+            y_prob = F.softmax(y, dim=1)
+            y_all[idx] = y_prob
+
+        # Go over Feature pertubated predictions and convert them to probabilities.
+        # y_all_fp[0, i] = softmax output of the i-th perturbed version of decoder 1
+        # y_all_fp[1, i] = softmax output of the i-th perturbed version of decoder 2
+        # y_all_fp  has shape (num_outputs, num_FP, B, C, D, H, W)
+        y_all_fp = torch.zeros((num_outputs, self.num_FP) + outputs_seg[0].shape).to(self.device)
+        for dec_idx in range(num_outputs):  # 0 and 1
+            for fp_idx in range(self.num_FP):    # 0 and 1
+                y = outputs_seg_FP[dec_idx][fp_idx]
+                y_prob = F.softmax(y, dim=1)
+                y_all_fp[dec_idx, fp_idx] = y_prob
+
+        loss_ml_fp = 0
+        for i in range(num_outputs):
+            for j in range(num_outputs):
+                if i != j:
+                    loss_ml_fp += self.calculate_ML_FP(y_all=y_all,
+                                                outfeats=outfeats,
+                                                outputs_seg=outputs_seg,
+                                                y_all_fp=y_all_fp,
+                                                i=i,
+                                                j=j,
+                                                num_classes=self.label_manager.num_segmentation_heads,
+                                                consistency_criterion=self.consistency_criterion_ml)
+
+        cw_ml = self.get_current_consistency_weight(start_epoch=0, end_epoch=1000, max_weight=0.1)
+        weighted_loss_ml_fp = cw_ml  * loss_ml_fp 
+        self.logger.log('loss_ml', loss_ml_fp.detach().cpu().numpy(), self.current_epoch)
+        self.logger.log('consistency_weight', cw_ml, self.current_epoch)
+        self.logger.log('weighted_loss_ml', weighted_loss_ml_fp.detach().cpu().numpy(), self.current_epoch)
+        l = ( 0.5 * loss_seg) + (cw_ml * loss_ml_fp) 
 
         l.backward()
         torch.nn.utils.clip_grad_norm_(self.network.parameters(), 12)
@@ -317,7 +803,8 @@ class nnUNetTrainerCoBoundarySeg1_2(nnUNetTrainerNoDeepSupervision):
         features2 = output['features2']
 
         del data
-        l = self.loss(output_seg1, target)
+        l1 = self.loss(output_seg1, target)
+        l = l1
 
         axes = [0] + list(range(2, output_seg1.ndim))
 
@@ -566,7 +1053,7 @@ class nnUNetTrainerCoBoundarySeg1_2(nnUNetTrainerNoDeepSupervision):
         self.set_deep_supervision_enabled(True)
         compute_gaussian.cache_clear()
 
-class nnUNetTrainerCoBoundarySeg_100epochs1_2(nnUNetTrainerCoBoundarySeg1_2):
+class nnUNetTrainerCoBoundarySeg_100epochs5(nnUNetTrainerCoBoundarySeg5_4_8):
     def __init__(
             self,
             plans: dict,
