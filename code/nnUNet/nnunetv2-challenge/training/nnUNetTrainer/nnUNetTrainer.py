@@ -65,12 +65,11 @@ from nnunetv2.utilities.get_network_from_plans import get_network_from_plans
 from nnunetv2.utilities.helpers import empty_cache, dummy_context
 from nnunetv2.utilities.label_handling.label_handling import convert_labelmap_to_one_hot, determine_num_input_channels
 from nnunetv2.utilities.plans_handling.plans_handler import PlansManager
-from nnunetv2.utilities.plans_handling.plans_handler import ConfigurationManager, PlansManager
 
 
 class nnUNetTrainer(object):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
-                 device: torch.device = torch.device('cuda'), percentage: float = 0.05, seed_name: str = '4',):
+                 device: torch.device = torch.device('cuda')):
         # From https://grugbrain.dev/. Worth a read ya big brains ;-)
 
         # apex predator of grug is complexity
@@ -92,8 +91,6 @@ class nnUNetTrainer(object):
         self.local_rank = 0 if not self.is_ddp else dist.get_rank()
 
         self.device = device
-        self.percentage_labeled_data = percentage
-        self.seed_name = seed_name # CANSU: we added this to the init args to save it in the checkpoint
 
         # print what device we are using
         if self.is_ddp:  # implicitly it's clear that we use cuda in this case
@@ -125,16 +122,10 @@ class nnUNetTrainer(object):
         # inference and some of the folders may not be defined!
         self.preprocessed_dataset_folder_base = join(nnUNet_preprocessed, self.plans_manager.dataset_name) \
             if nnUNet_preprocessed is not None else None
-
-        # CANSU: we added the percentage_labeled_data and the seed_name to the output folder name
-        self.output_folder_base = join(
-            nnUNet_results,
-            self.plans_manager.dataset_name,
-            f"{self.__class__.__name__}__{self.plans_manager.plans_name}__{configuration}__perc{self.percentage_labeled_data}_seed{self.seed_name}"
-        ) if nnUNet_results is not None else None
-
+        self.output_folder_base = join(nnUNet_results, self.plans_manager.dataset_name,
+                                       self.__class__.__name__ + '__' + self.plans_manager.plans_name + "__" + configuration) \
+            if nnUNet_results is not None else None
         self.output_folder = join(self.output_folder_base, f'fold_{fold}')
-
 
         self.preprocessed_dataset_folder = join(self.preprocessed_dataset_folder_base,
                                                 self.configuration_manager.data_identifier)
@@ -159,7 +150,7 @@ class nnUNetTrainer(object):
         self.num_val_iterations_per_epoch = 50
         self.num_epochs = 1000
         self.current_epoch = 0
-        self.enable_deep_supervision = False #CANSU
+        self.enable_deep_supervision = True
 
         ### Dealing with labels/regions
         self.label_manager = self.plans_manager.get_label_manager(dataset_json)
@@ -214,7 +205,7 @@ class nnUNetTrainer(object):
 
             self.num_input_channels = determine_num_input_channels(self.plans_manager, self.configuration_manager,
                                                                    self.dataset_json)
-            # INITIALIZE THE NETWORK
+
             self.network = self.build_network_architecture(
                 self.configuration_manager.network_arch_class_name,
                 self.configuration_manager.network_arch_init_kwargs,
@@ -344,7 +335,6 @@ class nnUNetTrainer(object):
             allow_init=True,
             deep_supervision=enable_deep_supervision)
 
-
     def _get_deep_supervision_scales(self):
         if self.enable_deep_supervision:
             deep_supervision_scales = list(list(i) for i in 1 / np.cumprod(np.vstack(
@@ -357,8 +347,6 @@ class nnUNetTrainer(object):
         if not self.is_ddp:
             # set batch size to what the plan says, leave oversample untouched
             self.batch_size = self.configuration_manager.batch_size
-            print("batch size", self.batch_size)
-            print('patch size', self.configuration_manager.patch_size)
         else:
             # batch size is distributed over DDP workers and we need to change oversample_percent for each worker
 
@@ -522,14 +510,6 @@ class nnUNetTrainer(object):
         lr_scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs)
         return optimizer, lr_scheduler
 
-    # # # # CANSU : IMPLEMENTING ADAM 
-    # # # def configure_optimizers(self):
-    # # #     from torch.optim import Adam
-    # # #     optimizer = Adam(self.network.parameters(), lr=self.initial_lr, weight_decay=self.weight_decay, eps=1e-5)
-    # # #     scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs, exponent=0.9)
-
-    # # #     return optimizer, scheduler
-
     def plot_network_architecture(self):
         if self._do_i_compile():
             self.print_to_log_file("Unable to plot network architecture: nnUNet_compile is enabled!")
@@ -626,40 +606,7 @@ class nnUNetTrainer(object):
             if any([i in val_keys for i in tr_keys]):
                 self.print_to_log_file('WARNING: Some validation cases are also in the training set. Please check the '
                                        'splits.json or ignore if this is intentional.')
-
-        # CANSU: We are assing the percentage of labeled data to the training set
-
-                # if dataset name contains Mbhseg24, we use it in the split name 
-        if "Mbhseg24" in self.plans_manager.dataset_name:
-            dataset_name_in_split = "Mbhseg24"
-        elif "Mbhseg25" in self.plans_manager.dataset_name:
-            dataset_name_in_split = "Mbhseg25"
-        else:
-            dataset_name_in_split = self.plans_manager.dataset_name
-        
-        num_labeled = int(self.percentage_labeled_data* len(tr_keys))
-
-        from nnunetv2.paths import nnUNet_preprocessed
-        parent_dir = os.path.dirname(nnUNet_preprocessed)
-        # CANSU: Update: we are using the X number of labeled data from the training set from the split file
-
-        split_folder_path =  join(parent_dir, 'all_splits_trainset')
-        split_file = join(split_folder_path, f'{num_labeled}_labeled_{dataset_name_in_split}_seed_{self.seed_name}.json')
-        print('Using split file:', split_file)
-        import json
-        # read the split file
-        if isfile(split_file):
-            self.print_to_log_file(f"Using {num_labeled} labeled training cases from the split file: {split_file}")
-            with open(split_file, 'r') as f:
-                data = json.load(f)
-
-            tr_keys_limit = list(data.keys())
-        else: # throw an error if the split file does not exist
-            raise FileNotFoundError(f"Split file {split_file} does not exist. Please create it first.")
-
-        self.print_to_log_file(f"Using {num_labeled} labeled training cases out of {len(tr_keys)} total training cases.")
-
-        return tr_keys_limit, val_keys
+        return tr_keys, val_keys
 
     def get_tr_and_val_datasets(self):
         # create dataset split
@@ -710,7 +657,6 @@ class nnUNetTrainer(object):
 
         dataset_tr, dataset_val = self.get_tr_and_val_datasets()
 
-        ## DATALOADERS
         dl_tr = nnUNetDataLoader(dataset_tr, self.batch_size,
                                  initial_patch_size,
                                  self.configuration_manager.patch_size,
