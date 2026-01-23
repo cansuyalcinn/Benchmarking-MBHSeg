@@ -27,8 +27,7 @@ from multiprocessing import Pool
 def get_identifiers_from_splitted_dataset_folder(folder: str, file_ending: str):
     files = subfiles(folder, suffix=file_ending, join=False)
     # all files have a 4 digit channel index (_XXXX)
-    # Remove only the file ending, keep the channel index (_XXXX)
-    crop = len(file_ending)
+    crop = len(file_ending) + 5
     files = [i[:-crop] for i in files]
     # only unique image ids
     files = np.unique(files)

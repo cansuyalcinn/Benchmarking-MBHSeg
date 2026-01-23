@@ -10,7 +10,6 @@ class nnUNetTrainerNoDeepSupervision(nnUNetTrainer):
         fold: int,
         dataset_json: dict,
         device: torch.device = torch.device("cuda"),
-        percantage: float = 0.05,
     ):
-        super().__init__(plans, configuration, fold, dataset_json, device, percantage)
+        super().__init__(plans, configuration, fold, dataset_json, device)
         self.enable_deep_supervision = False

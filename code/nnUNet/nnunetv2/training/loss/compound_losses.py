@@ -5,9 +5,6 @@ from nnunetv2.utilities.helpers import softmax_helper_dim1
 from torch import nn
 
 
-
-
-
 class DC_and_CE_loss(nn.Module):
     def __init__(self, soft_dice_kwargs, ce_kwargs, weight_ce=1, weight_dice=1, ignore_label=None,
                  dice_class=SoftDiceLoss):

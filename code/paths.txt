@@ -1,0 +1,3 @@
+export nnUNet_raw=/home/cansu/Benchmarking-MBHSeg/code/data_nnunet/nnUNet_raw;
+export nnUNet_preprocessed=/home/cansu/Benchmarking-MBHSeg/code/data_nnunet/nnUNet_preprocessed;
+export nnUNet_results=/home/cansu/Benchmarking-MBHSeg/code/data_nnunet/nnUNet_results

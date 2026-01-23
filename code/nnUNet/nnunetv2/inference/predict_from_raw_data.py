@@ -66,10 +66,9 @@ class nnUNetPredictor(object):
 
     def initialize_from_trained_model_folder(self, model_training_output_dir: str,
                                              use_folds: Union[Tuple[Union[int, str]], None],
-                                             checkpoint_name: str = 'checkpoint_final.pth', model_name: str = 'nnUNetTrainer',):
+                                             checkpoint_name: str = 'checkpoint_final.pth'):
         """
         This is used when making predictions with a trained model
-        model name is distinguishing of the mode is the default nnUNetTrainer or a custom trainer (e.g. nnUNetTrainerCoBoundarySeg)
         """
         if use_folds is None:
             use_folds = nnUNetPredictor.auto_detect_available_folds(model_training_output_dir, checkpoint_name)
@@ -102,23 +101,15 @@ class nnUNetPredictor(object):
         if trainer_class is None:
             raise RuntimeError(f'Unable to locate trainer class {trainer_name} in nnunetv2.training.nnUNetTrainer. '
                                f'Please place it there (in any .py file)!')
+        network = trainer_class.build_network_architecture(
+            configuration_manager.network_arch_class_name,
+            configuration_manager.network_arch_init_kwargs,
+            configuration_manager.network_arch_init_kwargs_req_import,
+            num_input_channels,
+            plans_manager.get_label_manager(dataset_json).num_segmentation_heads,
+            enable_deep_supervision=False
+        )
 
-        # # # CANSU: IF MODEL NAME CONTAINS nnUNetTrainerCoBoundarySeg
-        if "nnUNetTrainerCoBoundarySeg" in model_name:
-            network = trainer_class.build_network_architecture(plans_manager, dataset_json, configuration_manager,
-                                                            num_input_channels, enable_deep_supervision=False)
-
-        else:
-            # this is for the main NNUNetTrainer class 
-            network = trainer_class.build_network_architecture(
-                configuration_manager.network_arch_class_name,
-                configuration_manager.network_arch_init_kwargs,
-                configuration_manager.network_arch_init_kwargs_req_import,
-                num_input_channels,
-                plans_manager.get_label_manager(dataset_json).num_segmentation_heads,
-                enable_deep_supervision=False
-            )
-        
         self.plans_manager = plans_manager
         self.configuration_manager = configuration_manager
         self.list_of_parameters = parameters
@@ -187,14 +178,15 @@ class nnUNetPredictor(object):
         caseids = [os.path.basename(i[0])[:-(len(self.dataset_json['file_ending']) + 5)] for i in
                    list_of_lists_or_source_folder]
         print(
-            f'I am process {part_id} out of {num_parts} (max process ID is {num_parts - 1}, we start counting with 0!)')
+            f'I am processing {part_id} out of {num_parts} (max process ID is {num_parts - 1}, we start counting with 0!)')
         print(f'There are {len(caseids)} cases that I would like to predict')
 
         if isinstance(output_folder_or_list_of_truncated_output_files, str):
             output_filename_truncated = [join(output_folder_or_list_of_truncated_output_files, i) for i in caseids]
-        else:
+        elif isinstance(output_folder_or_list_of_truncated_output_files, list):
             output_filename_truncated = output_folder_or_list_of_truncated_output_files[part_id::num_parts]
-
+        else:
+            output_filename_truncated = None
         seg_from_prev_stage_files = [join(folder_with_segs_from_prev_stage, i + self.dataset_json['file_ending']) if
                                      folder_with_segs_from_prev_stage is not None else None for i in caseids]
         # remove already predicted files from the lists
@@ -546,36 +538,23 @@ class nnUNetPredictor(object):
         return slicers
 
     @torch.inference_mode()
-    # 
     def _internal_maybe_mirror_and_predict(self, x: torch.Tensor) -> torch.Tensor:
         mirror_axes = self.allowed_mirroring_axes if self.use_mirroring else None
-
-        def get_primary_seg_output(pred):
-            # Handle models returning dict with 'seg1' (custom dual-decoder)
-            if isinstance(pred, dict) and 'seg1' in pred:
-                return pred['seg1']
-            return pred  # standard nnU-Net model returns tensor directly
-
-        prediction = get_primary_seg_output(self.network(x))
+        prediction = self.network(x)
 
         if mirror_axes is not None:
-            # make sure mirror axes are valid for tensor shape
-            assert max(mirror_axes) <= x.ndim - 3, 'Invalid mirror_axes for input tensor shape'
-            mirror_axes = [m + 2 for m in mirror_axes]
+            # check for invalid numbers in mirror_axes
+            # x should be 5d for 3d images and 4d for 2d. so the max value of mirror_axes cannot exceed len(x.shape) - 3
+            assert max(mirror_axes) <= x.ndim - 3, 'mirror_axes does not match the dimension of the input!'
 
+            mirror_axes = [m + 2 for m in mirror_axes]
             axes_combinations = [
                 c for i in range(len(mirror_axes)) for c in itertools.combinations(mirror_axes, i + 1)
             ]
-
             for axes in axes_combinations:
-                mirrored_x = torch.flip(x, axes)
-                mirrored_pred = get_primary_seg_output(self.network(mirrored_x))
-                prediction += torch.flip(mirrored_pred, axes)
-
+                prediction += torch.flip(self.network(torch.flip(x, axes)), axes)
             prediction /= (len(axes_combinations) + 1)
-
         return prediction
-
 
     @torch.inference_mode()
     def _internal_predict_sliding_window_return_logits(self,
@@ -787,6 +766,12 @@ class nnUNetPredictor(object):
         empty_cache(self.device)
         return ret
 
+def _getDefaultValue(env: str, dtype: type, default: any,) -> any:
+    try:
+        val = dtype(os.environ.get(env) or default)
+    except:
+        val = default
+    return val
 
 def predict_entry_point_modelfolder():
     import argparse
@@ -922,10 +907,10 @@ def predict_entry_point():
                         help='Continue an aborted previous prediction (will not overwrite existing files)')
     parser.add_argument('-chk', type=str, required=False, default='checkpoint_final.pth',
                         help='Name of the checkpoint you want to use. Default: checkpoint_final.pth')
-    parser.add_argument('-npp', type=int, required=False, default=3,
+    parser.add_argument('-npp', type=int, required=False, default=_getDefaultValue('nnUNet_npp', int, 3),
                         help='Number of processes used for preprocessing. More is not always better. Beware of '
                              'out-of-RAM issues. Default: 3')
-    parser.add_argument('-nps', type=int, required=False, default=3,
+    parser.add_argument('-nps', type=int, required=False, default=_getDefaultValue('nnUNet_nps', int, 3),
                         help='Number of processes used for segmentation export. More is not always better. Beware of '
                              'out-of-RAM issues. Default: 3')
     parser.add_argument('-prev_stage_predictions', type=str, required=False, default=None,
@@ -992,13 +977,26 @@ def predict_entry_point():
         args.f,
         checkpoint_name=args.chk
     )
-    predictor.predict_from_files(args.i, args.o, save_probabilities=args.save_probabilities,
-                                 overwrite=not args.continue_prediction,
-                                 num_processes_preprocessing=args.npp,
-                                 num_processes_segmentation_export=args.nps,
-                                 folder_with_segs_from_prev_stage=args.prev_stage_predictions,
-                                 num_parts=args.num_parts,
-                                 part_id=args.part_id)
+    
+    run_sequential = args.nps == 0 and args.npp == 0
+    
+    if run_sequential:
+        
+        print("Running in non-multiprocessing mode")
+        predictor.predict_from_files_sequential(args.i, args.o, save_probabilities=args.save_probabilities,
+                                                overwrite=not args.continue_prediction,
+                                                folder_with_segs_from_prev_stage=args.prev_stage_predictions)
+    
+    else:
+        
+        predictor.predict_from_files(args.i, args.o, save_probabilities=args.save_probabilities,
+                                    overwrite=not args.continue_prediction,
+                                    num_processes_preprocessing=args.npp,
+                                    num_processes_segmentation_export=args.nps,
+                                    folder_with_segs_from_prev_stage=args.prev_stage_predictions,
+                                    num_parts=args.num_parts,
+                                    part_id=args.part_id)
+    
     # r = predict_from_raw_data(args.i,
     #                           args.o,
     #                           model_folder,

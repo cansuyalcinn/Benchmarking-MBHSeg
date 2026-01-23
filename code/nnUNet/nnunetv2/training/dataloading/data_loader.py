@@ -16,9 +16,6 @@ from nnunetv2.utilities.plans_handling.plans_handler import PlansManager
 from acvl_utils.cropping_and_padding.bounding_boxes import crop_and_pad_nd
 
 
-
-
-
 class nnUNetDataLoader(DataLoader):
     def __init__(self,
                  data: nnUNetBaseDataset,
@@ -221,111 +218,11 @@ class nnUNetDataLoader(DataLoader):
         return {'data': data_all, 'target': seg_all, 'keys': selected_keys}
 
 
-######
-
-from nnunetv2.utilities.plans_handling.plans_handler import PlansManager
-import torch
-from torch.utils.data import Sampler
-import itertools
-import numpy as np
-
-class TwoStreamBatchSampler(Sampler):
-    def __init__(self, primary_indices, secondary_indices, batch_size, secondary_batch_size):
-        self.primary_indices = primary_indices
-        self.secondary_indices = secondary_indices
-        self.secondary_batch_size = secondary_batch_size
-        self.primary_batch_size = batch_size - secondary_batch_size
-
-        assert len(self.primary_indices) >= self.primary_batch_size > 0
-        assert len(self.secondary_indices) >= self.secondary_batch_size > 0
-
-    def __iter__(self):
-        primary_iter = iterate_once(self.primary_indices)
-        secondary_iter = iterate_eternally(self.secondary_indices)
-        return (
-            list(primary_batch) + list(secondary_batch)
-            for (primary_batch, secondary_batch)
-            in zip(grouper(primary_iter, self.primary_batch_size),
-                   grouper(secondary_iter, self.secondary_batch_size))
-        )
-
-    def __len__(self):
-        return len(self.primary_indices) // self.primary_batch_size
-
-
-def iterate_once(iterable):
-    return np.random.permutation(iterable)
-
-
-def iterate_eternally(indices):
-    def infinite_shuffles():
-        while True:
-            yield np.random.permutation(indices)
-    return itertools.chain.from_iterable(infinite_shuffles())
-
-
-def grouper(iterable, n):
-    args = [iter(iterable)] * n
-    return zip(*args)
-
-
-class SemiSupervisedNNUNetDataLoader(nnUNetDataLoader):
-    def __init__(self,
-                 data,
-                 batch_size,
-                 patch_size,
-                 final_patch_size,
-                 label_manager,
-                 labeled_idxs,
-                 unlabeled_idxs,
-                 labeled_bs,
-                 transforms=None,
-                 **kwargs):
-
-        super().__init__(data, batch_size, patch_size, final_patch_size,
-                         label_manager, transforms=transforms, **kwargs)
-
-        self.labeled_bs = labeled_bs
-        self.unlabeled_bs = batch_size - labeled_bs
-        self.primary_indices = labeled_idxs
-        self.secondary_indices = unlabeled_idxs
-        self.sampler = TwoStreamBatchSampler(self.primary_indices, self.secondary_indices,
-                                             batch_size, self.unlabeled_bs)
-
-        # disable internal shuffling logic
-        self.indices = list(range(len(data.identifiers)))  # still required for super class
-
-    def get_indices(self):
-        # Convert sampled integer indices to actual string identifiers
-        sampled_indices = next(iter(self.sampler))
-        return [self._data.identifiers[i] for i in sampled_indices]
-
-######
-
 if __name__ == '__main__':
-    folder = join(nnUNet_preprocessed, 'Dataset100_Brats19', 'nnUNetPlans_3d_fullres')
+    folder = join(nnUNet_preprocessed, 'Dataset002_Heart', 'nnUNetPlans_3d_fullres')
     ds = nnUNetDatasetBlosc2(folder)  # this should not load the properties!
     pm = PlansManager(join(folder, os.pardir, 'nnUNetPlans.json'))
     lm = pm.get_label_manager(load_json(join(folder, os.pardir, 'dataset.json')))
     dl = nnUNetDataLoader(ds, 5, (16, 16, 16), (16, 16, 16), lm,
                           0.33, None, None)
-    labeled_idxs = list(range(0, 12))
-    unlabeled_idxs = list(range(12, len(ds.identifiers)))
-    labeled_bs = 4 // 2 
-
-    print('labeled size:', len(labeled_idxs))
-    print('unlabeled size:', len(unlabeled_idxs))
-    print('labeled batch size:', labeled_bs)
-    print('unlabeled batch size:', 4 - labeled_bs)
-    
-    dl_tr = SemiSupervisedNNUNetDataLoader(data=ds,
-                                                batch_size=4,
-                                                patch_size=(16, 16, 16),
-                                                final_patch_size=(16, 16, 16),
-                                                label_manager=lm,
-                                                labeled_idxs=labeled_idxs,
-                                                unlabeled_idxs=unlabeled_idxs,
-                                                labeled_bs=labeled_bs,
-                                                transforms=None)
-    a = next(dl_tr)
-    print(a['data'].shape, a['target'].shape, a['keys'])
+    a = next(dl)
