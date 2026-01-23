@@ -69,7 +69,7 @@ from nnunetv2.utilities.plans_handling.plans_handler import PlansManager
 
 class nnUNetTrainer(object):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
-                 device: torch.device = torch.device('cuda')):
+                 device: torch.device = torch.device('cuda'), percentage: float = 0.05, seed_name: str = '0',):
         # From https://grugbrain.dev/. Worth a read ya big brains ;-)
 
         # apex predator of grug is complexity
@@ -91,6 +91,11 @@ class nnUNetTrainer(object):
         self.local_rank = 0 if not self.is_ddp else dist.get_rank()
 
         self.device = device
+        self.percentage_labeled_data = percentage
+        self.seed_name = seed_name # CANSU: we added this to the init args to save it in the checkpoint
+
+        print('percantage_labeled_data:', self.percentage_labeled_data)  # CANSU: debug
+        print('seed_name:', self.seed_name)  # CANSU: debug
 
         # print what device we are using
         if self.is_ddp:  # implicitly it's clear that we use cuda in this case
@@ -122,9 +127,14 @@ class nnUNetTrainer(object):
         # inference and some of the folders may not be defined!
         self.preprocessed_dataset_folder_base = join(nnUNet_preprocessed, self.plans_manager.dataset_name) \
             if nnUNet_preprocessed is not None else None
-        self.output_folder_base = join(nnUNet_results, self.plans_manager.dataset_name,
-                                       self.__class__.__name__ + '__' + self.plans_manager.plans_name + "__" + configuration) \
-            if nnUNet_results is not None else None
+
+        # CANSU: we added the percentage_labeled_data and the seed_name to the output folder name
+        self.output_folder_base = join(
+            nnUNet_results,
+            self.plans_manager.dataset_name,
+            f"{self.__class__.__name__}__{self.plans_manager.plans_name}__{configuration}__perc{self.percentage_labeled_data}_seed{self.seed_name}"
+        ) if nnUNet_results is not None else None
+
         self.output_folder = join(self.output_folder_base, f'fold_{fold}')
 
         self.preprocessed_dataset_folder = join(self.preprocessed_dataset_folder_base,
@@ -562,51 +572,57 @@ class nnUNetTrainer(object):
         if self.dataset_class is None:
             self.dataset_class = infer_dataset_class(self.preprocessed_dataset_folder)
 
-        if self.fold == "all":
-            # if fold==all then we use all images for training and validation
-            case_identifiers = self.dataset_class.get_identifiers(self.preprocessed_dataset_folder)
-            tr_keys = case_identifiers
-            val_keys = tr_keys
+
+        ## add the dataset name in the naming of the split file. 
+        # read he split file containing all train and val values possible, then filter these trainnig keys with our percentage data. 
+
+        # CANSU: We are assing the percentage of labeled data to the training set
+
+        # if dataset name contains Mbhseg24 or Mbhseg25, we use it in the split name 
+        if "Mbhseg24" in self.plans_manager.dataset_name:
+            dataset_name_in_split = "Mbhseg24"
+        elif "Mbhseg25" in self.plans_manager.dataset_name:
+            dataset_name_in_split = "Mbhseg25"
         else:
-            splits_file = join(self.preprocessed_dataset_folder_base, "splits_final.json")
-            dataset = self.dataset_class(self.preprocessed_dataset_folder,
-                                         identifiers=None,
-                                         folder_with_segs_from_previous_stage=self.folder_with_segs_from_previous_stage)
-            # if the split file does not exist we need to create it
-            if not isfile(splits_file):
-                self.print_to_log_file("Creating new 5-fold cross-validation split...")
-                all_keys_sorted = list(np.sort(list(dataset.identifiers)))
-                splits = generate_crossval_split(all_keys_sorted, seed=12345, n_splits=5)
-                save_json(splits, splits_file)
+            dataset_name_in_split = self.plans_manager.dataset_name
 
-            else:
-                self.print_to_log_file("Using splits from existing split file:", splits_file)
-                splits = load_json(splits_file)
-                self.print_to_log_file(f"The split file contains {len(splits)} splits.")
+        from nnunetv2.paths import nnUNet_preprocessed
+        parent_dir = os.path.dirname(nnUNet_preprocessed)
 
-            self.print_to_log_file("Desired fold for training: %d" % self.fold)
-            if self.fold < len(splits):
-                tr_keys = splits[self.fold]['train']
-                val_keys = splits[self.fold]['val']
-                self.print_to_log_file("This split has %d training and %d validation cases."
-                                       % (len(tr_keys), len(val_keys)))
-            else:
-                self.print_to_log_file("INFO: You requested fold %d for training but splits "
-                                       "contain only %d folds. I am now creating a "
-                                       "random (but seeded) 80:20 split!" % (self.fold, len(splits)))
-                # if we request a fold that is not in the split file, create a random 80:20 split
-                rnd = np.random.RandomState(seed=12345 + self.fold)
-                keys = np.sort(list(dataset.identifiers))
-                idx_tr = rnd.choice(len(keys), int(len(keys) * 0.8), replace=False)
-                idx_val = [i for i in range(len(keys)) if i not in idx_tr]
-                tr_keys = [keys[i] for i in idx_tr]
-                val_keys = [keys[i] for i in idx_val]
-                self.print_to_log_file("This random 80:20 split has %d training and %d validation cases."
-                                       % (len(tr_keys), len(val_keys)))
-            if any([i in val_keys for i in tr_keys]):
-                self.print_to_log_file('WARNING: Some validation cases are also in the training set. Please check the '
-                                       'splits.json or ignore if this is intentional.')
-        return tr_keys, val_keys
+        ## CANSU: we will be reading the splits from our prepared split files, based on different folds. each fold has its own train-val split. 
+        split_folder_path = join(parent_dir, 'all_splits_trainset')
+        split_file = join(split_folder_path, f'{dataset_name_in_split}_dict_names_trainval_fold_{self.seed_name}.json')
+        
+        import json
+        with open(split_file, 'r') as f:
+            data = json.load(f)
+
+        tr_keys = list(data['train'].keys())
+        val_keys = list(data['val'].keys())
+
+        self.print_to_log_file("This split has %d training and %d validation cases." % (len(tr_keys), len(val_keys)))
+        
+        num_labeled = int(self.percentage_labeled_data* len(tr_keys))
+        self.print_to_log_file(f"Using {num_labeled} labeled data out of {len(tr_keys)} total training cases.")
+
+        # CANSU: Update: we are using the X number of labeled data from the training set from the split file
+        split_file = join(split_folder_path, f'{num_labeled}_labeled_{dataset_name_in_split}_fold_{self.seed_name}.json')
+        print('Using split file:', split_file)
+
+        # read the split file
+        if isfile(split_file):
+            self.print_to_log_file(f"Using {num_labeled} labeled training cases from the split file: {split_file}")
+            with open(split_file, 'r') as f:
+                data = json.load(f)
+
+            tr_keys_limit = list(data.keys()) # we use the training keys from the split file based on the fold. 
+
+        else: # throw an error if the split file does not exist
+            raise FileNotFoundError(f"Split file {split_file} does not exist. Please create it first.")
+
+        self.print_to_log_file(f"Using {num_labeled} labeled training cases out of {len(tr_keys)} total training cases.")
+
+        return tr_keys_limit, val_keys
 
     def get_tr_and_val_datasets(self):
         # create dataset split

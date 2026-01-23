@@ -1,3 +1,8 @@
 export nnUNet_raw=/home/cansu/Benchmarking-MBHSeg/code/data_nnunet/nnUNet_raw;
 export nnUNet_preprocessed=/home/cansu/Benchmarking-MBHSeg/code/data_nnunet/nnUNet_preprocessed;
 export nnUNet_results=/home/cansu/Benchmarking-MBHSeg/code/data_nnunet/nnUNet_results
+
+Comments:
+
+CUDA_VISIBLE_DEVICES=1 nnUNetv2_train 200 3d_fullres 0 --percentage_labeled_data 1 --seed_name 0
+CUDA_VISIBLE_DEVICES=3 nnUNetv2_train 100 3d_fullres 0 -tr nnUNetTrainerCoBoundarySeg5_3 --percentage_labeled_data 1 --seed_name 0
